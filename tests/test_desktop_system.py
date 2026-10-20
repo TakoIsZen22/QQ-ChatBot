@@ -1,6 +1,8 @@
 """程序壳回归：不触碰本机自启、真实服务、正式数据或系统托盘。"""
 import json
 import copy
+import os
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +16,25 @@ from src.core.desktop_maintenance import DesktopMaintenance
 from src.core.desktop_lifecycle import DesktopLifecycle
 from tools.manage import manifest
 from src.core.service_intent import ServiceIntent
+
+
+def normalize_path(command):
+    """从命令行里取出绝对路径并规范化，忽略 Windows 8.3 短名与大小写差异。
+
+    8.3 短名（RUNNER~1 / DESKTO~1.PY）与长名指向同一文件，
+    但字符串不同，CI 上按字符串比较会误判失败。
+    """
+    parts=re.findall(r'"[^"]+"|\S+',command)
+    candidates=[p.strip('"') for p in parts if p.strip('"').startswith(('C:\\','D:\\','E:\\','%')) or p.strip('"').startswith(('/',))]
+    for raw in candidates:
+        # 优先取脚本本身（.py），命令行里常同时有解释器（.exe）。
+        if not raw.lower().endswith('.py'):continue
+        if os.path.exists(raw):
+            # 用 realpath 把 8.3 短名还原成长名；同一文件即可判定相等。
+            try:raw=os.path.abspath(os.path.realpath(raw))
+            except OSError:pass
+        return os.path.normcase(raw)
+    return ''
 
 
 class FakeKey:
@@ -59,7 +80,9 @@ class DesktopSystemTests(unittest.TestCase):
         integration=self.api._integration
         self.assertFalse(integration.startup()['registered'])
         integration.set_startup(True);cmd=self.registry.values[RUN_KEY][VALUE_NAME]
-        self.assertIn(str(self.root/'tools/desktop-launch.py'),cmd);self.assertIn('--startup',cmd)
+        # Windows 可能把同一目录写成 8.3 短名（RUNNER~1），只比较规范化后的路径。
+        self.assertEqual(normalize_path(cmd),normalize_path(f'{self.root}{os.sep}tools{os.sep}desktop-launch.py'))
+        self.assertIn('--startup',cmd)
         self.assertNotIn('-m src.desktop',cmd)
         self.assertTrue(integration.startup()['registered'])
         integration.set_startup(False);self.assertFalse(integration.startup()['registered'])

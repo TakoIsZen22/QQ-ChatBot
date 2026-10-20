@@ -84,7 +84,10 @@ def main():
     except Exception as e:
         if os.name=='nt':
             import ctypes
-            ctypes.windll.user32.MessageBoxW(None,'桌面窗口启动失败：'+str(e)+'\n可用 src.desktop_legacy 作为维护备用界面。',TITLE,0x10)
+            # 绿色包的 embeddable Python 不含 tkinter，legacy 界面不可用，别给无效建议。
+            fallback=('请改用浏览器打开 http://127.0.0.1:8765 。'
+                      if portable(ROOT) else '可用 src.desktop_legacy 作为维护备用界面。')
+            ctypes.windll.user32.MessageBoxW(None,'桌面窗口启动失败：'+str(e)+'\n'+fallback,TITLE,0x10)
         else:raise
     finally:
         if 'lifecycle' in locals():lifecycle.close()

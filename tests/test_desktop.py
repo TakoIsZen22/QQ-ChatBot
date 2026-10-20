@@ -1,12 +1,19 @@
 import tempfile
 import time
-import tkinter as tk
 import unittest
 from pathlib import Path
 from unittest.mock import patch,Mock
-from src.desktop import DesktopApp
+
+try:
+    import tkinter as tk
+except ModuleNotFoundError:  # 绿色包的 embeddable Python 不含 tkinter
+    tk=None
 from src.core.config import load
 from src.core.desktop_backend import DesktopBackend
+if tk is not None:
+    from src.desktop import DesktopApp
+else:
+    DesktopApp=None
 
 class FakeBackend:
     def __init__(self):self.sent=[];self.fail=False
@@ -24,10 +31,11 @@ class FakeBackend:
     def start_qq(self):return 'QQ启动'
     def logs(self):return 'INFO fixture'
 
+@unittest.skipIf(tk is None,'当前 Python 不含 tkinter（绿色包运行时），跳过旧桌面界面测试')
 class DesktopTests(unittest.TestCase):
     def setUp(self):
         self.root=tk.Tk();self.root.withdraw();self.backend=FakeBackend()
-        self.app=DesktopApp(self.root,self.backend,auto_start=False)
+        self.app=DesktopApp(self.root,self.backend,auto_start=False)  # type: ignore[arg-type]
         self.addCleanup(lambda:self.app.close() if not self.app.closed else None)
 
     def pump_until(self,predicate):
