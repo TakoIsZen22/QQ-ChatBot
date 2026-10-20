@@ -39,14 +39,10 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
-          # 1.00.01 是专属源码（已裁掉 Magpie），只能构建它自己那版；
-          # 1.00.02 主源码同时产出两个发行版。
-          $releaseVersion = python -c "from src.version import VERSION; print(VERSION)"
-          if ($env:RELEASE_TAG -eq 'v1.00.01') {
-            python tools/build-editions.py --edition 1.00.01 --sevenzip 'C:\Program Files\7-Zip\7z.exe'
-          } else {
-            python tools/build-editions.py --edition all --sevenzip 'C:\Program Files\7-Zip\7z.exe'
-          }
+          # 每个 tag 只构建自己对应的那一版：v1.00.01 用它自己的专属源码，
+          # v1.00.02 用主源码。两版资产各挂各的 Release，不混装。
+          $version = $env:RELEASE_TAG -replace '^v',''
+          python tools/build-editions.py --edition $version --sevenzip 'C:\Program Files\7-Zip\7z.exe'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
