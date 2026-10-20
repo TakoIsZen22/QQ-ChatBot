@@ -35,11 +35,11 @@
     "qq_id": ""
   },
   "model": {
-    "provider": "magpie",
-    "base_url": "http://127.0.0.1:3425/v1",
+    "provider": "openai_compatible",
+    "base_url": "",
     "main": "",
     "auxiliary": "",
-    "key_env": "MAGPIE_API_KEY",
+    "key_env": "HARNESS_API_KEY",
     "models_timeout_seconds": 10,
     "max_response_bytes": 4194304,
     "timeout_seconds": 90,

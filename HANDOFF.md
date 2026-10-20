@@ -1,5 +1,7 @@
 # 通用维护 Agent 交接手册
 
+当前发行：**1.00.01 · 自有 API 版**。仅支持自有 OpenAI 兼容 API；没有 Magpie 接入入口。
+
 适用于任意获得使用者授权的 Agent 或人工维护者，不依赖指定产品。所有命令从当前安装的项目根目录执行。先读 AGENTS.md、docs/AGENT_SUPERVISION.md 和 docs/ACCEPTANCE.md，不操作其他项目。
 
 ## 0. 接手与安装状态

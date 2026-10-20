@@ -1,5 +1,7 @@
 # QQ ChatBot
 
+当前发行：**1.00.01 · 自有 API 版**。仅支持自有 OpenAI 兼容 API；没有 Magpie 接入入口。
+
 [下载 Windows 桌面版](https://github.com/TakoIsZen22/QQ-ChatBot/releases/latest) · [新手教程](docs/GETTING_STARTED.md) · [CLI / 桌面 Agent 接入](docs/AGENT_WORK.md)
 
 Windows 本机个人 AI 伴侣，采用 **MIT** 许可。本次提供两种发行版本，聊天、记忆、人设与 QQ 功能相同，区别在模型接入方式：
@@ -29,7 +31,7 @@ Windows包需与本版本一致，完整解压后双击QQ ChatBot.exe。旧版�
 
 ## 源码运行
 
-1.00.01 按 [自有 API 接入说明](docs/MODEL_API.md)配置。1.00.02 可使用同一教程，也可按 [Magpie 五步接入教程（仅 1.00.02，可选）](docs/MAGPIE_SETUP.md)配置已有网关。程序不会要求你先安装 Magpie。
+1.00.01 按 [自有 API 接入说明](docs/MODEL_API.md)配置。1.00.02 可使用同一教程，也可按 [Magpie 五步接入教程（仅 1.00.02，可选）](docs/EDITIONS.md)配置已有网关。程序不会要求你先安装 Magpie。
 
 1. 解压到自己的独立目录。准备 Python 3.11 或更新版本；桌面另外需要 Python 3.11、Microsoft Edge WebView2 Runtime，语音也使用独立 3.11 环境。
 2. 双击 `tools/install.bat`，再双击 `tools/install-desktop.bat`。源码不包含环境、模型权重、第三方客户端或登录态。QQ 源码运行另需 Visual Studio C++ x64 工具链与 Windows SDK，执行 `python tools/build-native-host.py`；Windows 桌面包已内置自写宿主。

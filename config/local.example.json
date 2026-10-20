@@ -7,9 +7,9 @@
     "agent_name": "维护 Agent"
   },
   "model": {
-    "provider": "magpie",
-    "base_url": "http://127.0.0.1:3425/v1",
-    "key_env": "MAGPIE_API_KEY",
+    "provider": "openai_compatible",
+    "base_url": "",
+    "key_env": "HARNESS_API_KEY",
     "main": "",
     "auxiliary": ""
   },
