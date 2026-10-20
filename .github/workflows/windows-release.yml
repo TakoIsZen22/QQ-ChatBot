@@ -74,8 +74,10 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag
             fi
             notes=""
-            if [ -f "docs/RELEASE_NOTES_${tag}.md" ]; then
-              notes="--notes-file docs/RELEASE_NOTES_${tag}.md"
-            fi
+            # tag 带 v 前缀（v0.10.0），说明文件通常不带 v，两种都试。
+            for candidate in "docs/RELEASE_NOTES_${tag}.md" "docs/RELEASE_NOTES_${tag#v}.md"; do
+              if [ -f "$candidate" ]; then notes="--notes-file $candidate"; break; fi
+            done
+            if [ -z "$notes" ]; then notes="--generate-notes"; fi
             gh release create "$tag" --title "QQ ChatBot $tag" $notes dist/*
           fi
