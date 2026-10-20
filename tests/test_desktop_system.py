@@ -21,31 +21,40 @@ from src.core.service_intent import ServiceIntent
 def normalize_path(command):
     """从命令行里取出绝对路径并规范化，忽略 Windows 8.3 短名与大小写差异。
 
-    8.3 短名（RUNNER~1 / DESKTO~1.PY）与长名指向同一文件，
-    但字符串不同，CI 上按字符串比较会误判失败。
-    目标文件可能尚不存在，因此不能只靠 realpath，还要用 GetLongPathName 展开短名。
+    CI 上 tempfile 返回 8.3 短名目录（RUNNER~1），而注册表里是同一目录的长名
+    （runneradmin）。短名下的目标文件未必存在，所以不能只展开文件名，
+    要把整条路径的每一段都展开。
     """
     parts=re.findall(r'"[^"]+"|\S+',command)
     candidates=[p.strip('"') for p in parts if p.strip('"').startswith(('C:\\','D:\\','E:\\','%')) or p.strip('"').startswith(('/',))]
     for raw in candidates:
         # 优先取脚本本身（.py），命令行里常同时有解释器（.exe）。
         if not raw.lower().endswith('.py'):continue
-        raw=expand_short_name(raw)
-        return os.path.normcase(os.path.abspath(raw))
+        return os.path.normcase(os.path.abspath(expand_short_name(raw)))
     return ''
 
 
 def expand_short_name(path):
-    """把 Windows 8.3 短名展开成长名；非 Windows 或失败时原样返回。"""
-    if os.name!='nt' or not os.path.exists(path):return path
+    """把 Windows 8.3 短名展开成长名；非 Windows 或失败时原样返回。
+
+    GetLongPathNameW 要求路径存在，因此逐级向上找到第一个存在的祖先再展开。
+    """
+    if os.name!='nt':return path
     try:
         import ctypes
-        buf=ctypes.create_unicode_buffer(32768)
-        length=ctypes.windll.kernel32.GetLongPathNameW(path,buf,len(buf))
-        if 0<length<len(buf):return buf.value
+        parts=path.replace('/','\\').split('\\')
+        # 从最深的现有目录开始回溯，逐段拼接后展开。
+        for index in range(len(parts),0,-1):
+            prefix='\\'.join(parts[:index])
+            if not prefix or not os.path.isdir(prefix):continue
+            buf=ctypes.create_unicode_buffer(32768)
+            length=ctypes.windll.kernel32.GetLongPathNameW(prefix,buf,len(buf))
+            if not (0<length<len(buf)):continue
+            expanded=buf.value+'\\'.join(parts[index:])
+            return expanded.replace('\\','/') if '/' in path else expanded
+        return path
     except Exception:
-        pass
-    return path
+        return path
 
 
 class FakeKey:
