@@ -6,6 +6,7 @@ import unittest
 import zipfile
 from pathlib import Path
 from src.core.config import load
+from src.version import VERSION
 from tools.package_release import ROOT_FILES,build_release
 
 
@@ -17,7 +18,8 @@ class ReleaseTests(unittest.TestCase):
         self.cfg = load(self.root/'absent.json')
         for name in ROOT_FILES:
             self.write(name,'public fixture')
-        self.write('src/version.py',"VERSION = '0.4.0'\n")
+        # fixture 必须与被测发行版自洽：版本号取当前发行版，默认接入配置随之匹配。
+        self.write('src/version.py',f"VERSION = '{VERSION}'\n")
         self.write('src/persona/role.md','通用角色')
         self.write('config/settings.json',json.dumps(self.cfg))
         self.write('config/local.example.json','{}')
@@ -34,7 +36,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_package_is_private_state_free_and_manifest_matches_every_file(self):
         result = build_release(self.root)
-        prefix = 'qq-chatbot-0.4.0/'
+        prefix = f'qq-chatbot-{VERSION}/'
         with zipfile.ZipFile(result['path']) as archive:
             manifest = json.loads(archive.read(prefix+'manifest.json'))
             names = set(archive.namelist())-{prefix+'manifest.json'}

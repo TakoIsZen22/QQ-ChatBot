@@ -11,6 +11,10 @@ class SupervisionTests(unittest.TestCase):
     def setUp(self):
         self.cfg = load(Path(tempfile.gettempdir())/'no-dafeiyu-local-config.json')
         self.cfg['maintenance']['agent_name'] = '其他监管助手'
+        # 自有 API 版默认 base_url 为空，未接入时探针必然失败，巡检会判 degraded。
+        # 这类测试要断言 healthy，就得先给一个可用的地址。
+        if self.cfg['model']['provider']=='openai_compatible' and not self.cfg['model']['base_url']:
+            self.cfg['model']['base_url']='https://api.example/v1'
 
     def test_any_agent_can_read_health_without_private_fields_or_actions(self):
         data = {'name':'大肥鱼 Harness','mode':'paused','last_spoke':None,'memory_count':2,'agent_active':1,

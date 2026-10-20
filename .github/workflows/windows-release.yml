@@ -36,8 +36,17 @@ jobs:
         run: python -m unittest discover -s tests -q
       - name: Build Windows and clean source packages
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
-          python tools/build-editions.py --sevenzip 'C:\Program Files\7-Zip\7z.exe'
+          # 1.00.01 是专属源码（已裁掉 Magpie），只能构建它自己那版；
+          # 1.00.02 主源码同时产出两个发行版。
+          $releaseVersion = python -c "from src.version import VERSION; print(VERSION)"
+          if ($env:RELEASE_TAG -eq 'v1.00.01') {
+            python tools/build-editions.py --edition 1.00.01 --sevenzip 'C:\Program Files\7-Zip\7z.exe'
+          } else {
+            python tools/build-editions.py --edition all --sevenzip 'C:\Program Files\7-Zip\7z.exe'
+          }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
@@ -75,7 +84,7 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag
             fi
             notes=""
-            # tag 带 v 前缀（v0.10.0），说明文件通常不带 v，两种都试。
+            # tag 带 v 前缀（v1.00.02），说明文件通常不带 v，两种都试。
             for candidate in "docs/RELEASE_NOTES_${tag}.md" "docs/RELEASE_NOTES_${tag#v}.md"; do
               if [ -f "$candidate" ]; then notes="--notes-file $candidate"; break; fi
             done

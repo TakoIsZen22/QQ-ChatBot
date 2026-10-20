@@ -1,0 +1,36 @@
+name: Cleanup early releases
+
+# 一次性维护用：删掉早期版本的 Release 及其资产。
+# 本地 PAT 没有 Release 写权限，只有 Actions 自带的 GITHUB_TOKEN 能删。
+# 用法：把要删的 tag 写进下面列表，push 触发本 workflow 后删掉它们。
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: '要删除的 Release tag，逗号分隔'
+        required: true
+        default: 'v0.10.0,v0.10.1,v0.10.2'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete early releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAGS: ${{ inputs.tags }}
+        run: |
+          set -euo pipefail
+          for tag in $(echo "$TAGS" | tr ',' ' '); do
+            tag=$(echo "$tag" | tr -d '[:space:]')
+            [ -z "$tag" ] && continue
+            echo "==> deleting release $tag"
+            # 先删资产再删 Release，避免留下孤儿资产
+            gh release delete "$tag" --repo "$REPO" --yes --cleanup-tag || true
+          done
+          echo "==> remaining releases"
+          gh release list --repo "$REPO"

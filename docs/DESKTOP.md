@@ -1,6 +1,6 @@
-> 0.9.0普通使用者优先下载Windows绿色包并双击QQ ChatBot.exe；首次向导与完整教程见[GETTING_STARTED](GETTING_STARTED.md)。本文中的虚拟环境命令是源码维护方式，绿色包用_runtime/python.exe。向导入口在程序设置中，原有功能继续可用。
+> 普通使用者优先下载Windows绿色包并双击QQ ChatBot.exe；首次向导与完整教程见[GETTING_STARTED](GETTING_STARTED.md)。本文中的虚拟环境命令是源码维护方式，绿色包用_runtime/python.exe。向导入口在程序设置中，原有功能继续可用。
 
-# 桌面程序使用说明（v0.8.0）
+# 桌面程序使用说明
 
 日常双击桌面或开始菜单「QQ ChatBot」。不需要终端，重复打开只唤回已有窗口。侧栏「设置」管理模型与陪伴；「程序设置」管理Windows和程序本身。
 

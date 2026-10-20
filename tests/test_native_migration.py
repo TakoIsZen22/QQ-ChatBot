@@ -14,10 +14,15 @@ class NativeMigrationTests(unittest.TestCase):
             root=Path(temp).resolve();(root/'config').mkdir()
             default=config.load(root/'missing')
             (root/'config/settings.json').write_text(json.dumps(default), encoding='utf-8')
+            # 自有 API 版默认 base_url 为空；此时若同时指定了模型 ID，配置就不再是
+            # "未接入"状态，会被校验拒绝。给出一个合法地址，保持 fixture 自洽。
+            model={'main':'fixture'}
+            if default['model']['provider']=='openai_compatible' and not default['model']['base_url']:
+                model['base_url']='https://api.example/v1'
             local={'owner':{'name':'测试者','qq_id':'11111'},
                    'qq':{'enabled':True,'bot_id':'22222','http_url':'http://127.0.0.1:3000',
                          'ws_url':'ws://127.0.0.1:3001','token_env':'LEGACY_BRIDGE_KEY','history_limit':20},
-                   'model':{'main':'fixture'},'safety':{'mode':'paused'}}
+                   'model':model,'safety':{'mode':'paused'}}
             path=root/'config/local.json';path.write_text(json.dumps(local), encoding='utf-8')
             before=path.read_bytes()
             with patch.object(config,'ROOT',root):

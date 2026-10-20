@@ -11,6 +11,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestServer,TestClient
 from src.core.config import load,validate
 from src.core.model_endpoint import endpoint
+from src.core.edition import capabilities
 from src.core.store import Store
 from src.core.log import Log
 from src.core.harness import Harness
@@ -23,8 +24,9 @@ from src.channel.local_ui import build
 class EndpointTests(unittest.TestCase):
     def setUp(self):self.cfg=load(Path(tempfile.gettempdir())/'absent-api-local.json')
 
-    def test_custom_https_and_loopback_support_without_changing_default_magpie(self):
-        self.assertEqual(self.cfg['model']['provider'],'magpie')
+    def test_custom_https_and_loopback_support_without_changing_default_provider(self):
+        # 默认接入方式随发行版不同：1.00.01 是自有 API，1.00.02 额外支持 Magpie。
+        self.assertEqual(self.cfg['model']['provider'],'openai_compatible' if 'magpie' not in capabilities()['providers'] else 'magpie')
         self.cfg['model'].update(provider='openai_compatible',base_url='https://api.example/v1/')
         validate(self.cfg);self.assertEqual(endpoint(self.cfg['model']),'https://api.example/v1')
         for url in ('http://localhost:11434/v1','http://127.0.0.1:8080/api/v1','http://[::1]:8080/v1'):
@@ -38,7 +40,11 @@ class EndpointTests(unittest.TestCase):
             with self.subTest(url=url),self.assertRaises(ValueError):
                 self.cfg['model']['base_url']=url;validate(self.cfg)
         self.cfg['model'].update(provider='magpie',base_url='https://api.example/v1')
-        with self.assertRaisesRegex(ValueError,'自定义'):validate(self.cfg)
+        if 'magpie' in capabilities()['providers']:
+            with self.assertRaisesRegex(ValueError,'自定义'):validate(self.cfg)
+        else:
+            # 自有 API 版在更早一步就拒绝 Magpie，提示应指向 1.00.02。
+            with self.assertRaisesRegex(ValueError,'1\.00\.02'):validate(self.cfg)
 
     def test_bridge_probe_uses_dedicated_timeout_and_cannot_receive_secret_fields(self):
         backend=Mock();api=DesktopApi(backend)

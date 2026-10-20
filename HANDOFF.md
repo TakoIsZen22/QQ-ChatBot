@@ -45,7 +45,7 @@ $snapshot = & '.\_runtime\python.exe' 'tools\manage.py' 'backup'
 
 跨机器恢复时独立QQ绝对路径需在新向导重新准备，API环境变量由使用者重新设。首次模型下载/QQ设备验证/扫码不由维护Agent代为完成。若官方组件下架或结构变更，先更新清单与适配器并重验，不能删除登录态、取消哈希校验或操作日常QQ。WebView2与Windows .NET/VC/UCRT仍是系统前提，未内置自动修复。
 
-## 聊天与外部工作边界（0.10.0）
+## 聊天与外部工作边界
 
 QQ ChatBot定位为聊天伴侣；工作通过明确转交由使用者自己的Agent执行。工作通道与maintenance.agent_name监管名称无关。侧栏“工作转交”可绑定通用CLI或桌面Agent，说明见docs/AGENT_WORK.md。
 
@@ -61,7 +61,7 @@ QQ ChatBot定位为聊天伴侣；工作通过明确转交由使用者自己的A
 
 ## 1. 十二模块地图
 
-### 0.13.0 自写 QQ 宿主与通道
+### 自写 QQ 宿主与通道
 
 `core/native_host.py` → `qq_native/host.cpp` 宿主 → 官方固定 QQNT 的 Node/V8 → `qq_native/entry.js/session.js` → `driver.js/protocol.js/gateway.js` → `modules/qq_bridge.py` → Harness/GroupMonitor。发送经 Safety，不直接调用原生发送绕过暂停。兼容版本与文件哈希集中 `config/qq-native-compat.json`，本机端口 `qq.native_port=3002`。完整 ABI/生命周期见 docs/NATIVE_QQ.md。
 
@@ -71,11 +71,11 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 
 私有 `.runtime/qq-native/profile` 下保存引擎全局、账号、下载与重定向 APPDATA/LOCALAPPDATA。是路径配置隔离，不是OS沙箱；不要声称官方内核全部访问已审计。`host-output.log` 可能有敏感原生登录材料，禁止复制到 issue 或打印；诊断仅用脱敏 state/events 和 doctor。data 快照不含QQ登录目录，需要另存时先停止QQ，再私下复制 profile 与 config/local.json。日志、去重和配额不清除。
 
-本机0.13.0正式宿主：真实扫码、机器人身份校验、主人文字接收、经模型与Harness/Safety发送、用户确认收到、随后恢复暂停已通过。真实断网重连、白名单群、多机安装及QQ媒体待验收；历史补拉、语音附件获取、图片上传发送尚未实现。每次宿主启动后主人先发新消息以学习其UID；不自动重发不确定发送或旧暂停消息。原生群白名单在启动时截取，新增或重新开启群需手动停止并启动QQ，停用/移除核心立即过滤。
+本机正式宿主：真实扫码、机器人身份校验、主人文字接收、经模型与Harness/Safety发送、用户确认收到、随后恢复暂停已通过。真实断网重连、白名单群、多机安装及QQ媒体待验收；历史补拉、语音附件获取、图片上传发送尚未实现。每次宿主启动后主人先发新消息以学习其UID；不自动重发不确定发送或旧暂停消息。原生群白名单在启动时截取，新增或重新开启群需手动停止并启动QQ，停用/移除核心立即过滤。
 
 只读 `tools/qq-native.py doctor` 分层核对客户端、固定哈希、自有宿主、网关及在线状态；旧状态/二维码/端口不能当成登录成功。`launch_available`只表示允许手动扫码，不是新安装已验收。回滚先保持暂停、停止QQ与核心、备份数据/附件/本机配置，换回可信源码，保留profile/日志/配额，旧版不自动启动新版宿主。
 
-### 0.11.0 独立群监听
+### 独立群监听
 
 `modules/group_monitor.py` 属于通道模块9的只读扩展，由 Harness 注入 QQBridge。群 `post_type=message/message_type=group` 只交 GroupMonitor，随后返回；不会到 receive/worker、私人记忆、人设或 AgentLink，没有群发送动作。`channel/local_ui.py` 的 `/api/group-monitor` GET 提供白名单、连接与最近事件时间；GET `?group_id=群号` 返回该群有限条记录；POST 仅允许 add(group_id/name)、update(group_id/name/enabled)、remove(group_id)，字段严格校验，保留 Host/Origin/本机头限制。配置修改先 validate/save_local 成功再热替换。
 
@@ -83,7 +83,7 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 
 桌面 `group-monitor.js/.css` 与 index 中“群聊监听”页；DesktopApi 固定接口白名单和 groups 窗口偏好；DesktopAssets 加内容指纹。多群标签/并排窗口、滚动不跳底、备注/启停/移除、断线提示与双主题见 docs/GROUP_MONITOR.md。群配置只存在 local.json，记录随 data 快照复制；数据恢复不覆盖当前配置。发布检查额外拒绝默认预填群号/备注。
 
-验证：`tools/smoke-group-monitor.py` 隔离 WebView2 原生桥；`tests/test_group_monitor.py` 验证白名单、按群隔离、重启去重、热保存、暂停只读、消息不进入主人/模型/工作、移除保留、跨域/注入拒绝、窗口偏好。回滚先备份数据与配置，停止本项目核心/界面后换回受信任 0.10.2 源码或原目录；从私人配置去掉仅新增的 group_monitor 字段（旧版不识别），保留 monitor.jsonl，不删除其他数据或登录态；启动后保持原有暂停。真实 QQ 群接收需使用者扫码并在已加入的测试群验收，夹具不替代实连。
+验证：`tools/smoke-group-monitor.py` 隔离 WebView2 原生桥；`tests/test_group_monitor.py` 验证白名单、按群隔离、重启去重、热保存、暂停只读、消息不进入主人/模型/工作、移除保留、跨域/注入拒绝、窗口偏好。回滚先备份数据与配置，停止本项目核心/界面后换回受信任的发布版本源码或原目录；从私人配置去掉仅新增的 group_monitor 字段（旧版不识别），保留 monitor.jsonl，不删除其他数据或登录态；启动后保持原有暂停。真实 QQ 群接收需使用者扫码并在已加入的测试群验收，夹具不替代实连。
 
 | # | 模块 / 文件 | 调用关系与数据 |
 |---|---|---|
@@ -316,7 +316,7 @@ health 只查 TCP 端口和 GET `/api/status`，不发消息、不唤醒模型�
 
 公共角色卡为通用模板，个人卡放在被忽略的 config/persona.local.md 并由 role.card 引用。升级保留 local.json 的称呼、账号、模型和私有人设路径，不覆盖 data。发布排除本地卡、数据、登录态与 Git 历史，附文件哈希 manifest；步骤见 docs/RELEASING.md。详细旧安装验收只在原电脑保存。
 
-0.12.0 清理旧外部桥接后，弃用的 QQ HTTP/WS 地址、鉴权环境变量名和历史补拉参数会在读取本机配置时忽略，并在下次保存时移除。不会更换模型出口或清除聊天、限流、去重。旧安装、日志和备份移到项目外私人归档，新快照重新校验；本机位置见 `.runtime/cleanup-report.json`，不要公开归档。回退时先按本手册停机备份，仅恢复同版本代码和所需配置；不要覆盖当前 data 或自动启动旧组件。当前自写 QQ 尚不能通过 GUI 扫码，真实接入待验收，离线阶段可使用本机聊天。
+清理旧外部桥接后，弃用的 QQ HTTP/WS 地址、鉴权环境变量名和历史补拉参数会在读取本机配置时忽略，并在下次保存时移除。不会更换模型出口或清除聊天、限流、去重。旧安装、日志和备份移到项目外私人归档，新快照重新校验；本机位置见 `.runtime/cleanup-report.json`，不要公开归档。回退时先按本手册停机备份，仅恢复同版本代码和所需配置；不要覆盖当前 data 或自动启动旧组件。当前自写 QQ 尚不能通过 GUI 扫码，真实接入待验收，离线阶段可使用本机聊天。
 
 ## 11. 专属人设 soul.md
 

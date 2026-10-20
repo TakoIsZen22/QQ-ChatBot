@@ -53,10 +53,13 @@ class EditionTests(unittest.TestCase):
             self.assertEqual(endpoint(self.cfg['model']),'http://127.0.0.1:3425/v1')
 
     def test_clean_source_editions_boot_with_their_own_version_defaults_and_ui(self):
+        # 派生是单向的：1.00.01 专属源码已裁掉 Magpie，无法再派生出 1.00.02。
+        # 因此在 1.00.01 源码里只验证它自己那一版。
+        versions=VERSIONS if 'magpie' in capabilities()['providers'] else ('1.00.01',)
         with tempfile.TemporaryDirectory() as temp:
             temp=Path(temp)
             archive=build_release(ROOT,temp/'clean.zip')['path']
-            for version in VERSIONS:
+            for version in versions:
                 stage=prepare_edition(archive,temp/version,version)
                 code="""
 import json

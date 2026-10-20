@@ -12,6 +12,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import TestClient,TestServer
 from src.core.config import load,validate
+from src.core.edition import capabilities
 from src.core.store import Store
 from src.core.safety import Safety
 from src.core.log import Log
@@ -55,8 +56,14 @@ class DataTests(unittest.TestCase):
         self.assertAlmostEqual(sum(Growth.normalize({'work':2,'companion':3,'learning':5}).values()),1)
         with self.assertRaises(ValueError):Growth.normalize({'work':-1,'companion':1,'learning':1})
         with self.assertRaises(ValueError):Growth.normalize({'work':float('nan'),'companion':1,'learning':1})
-        self.cfg['model']['base_url']='https://example.com/v1'
-        with self.assertRaises(ValueError):validate(self.cfg)
+        # Magpie 模式只认固定本机地址；自有 API 版则用地址格式本身来验证非法输入。
+        if 'magpie' in capabilities()['providers']:
+            self.cfg['model']['base_url']='https://example.com/v1'
+            with self.assertRaises(ValueError):validate(self.cfg)
+        else:
+            self.cfg['model']['provider']='openai_compatible'
+            self.cfg['model']['base_url']='http://api.example/v1'
+            with self.assertRaises(ValueError):validate(self.cfg)
 
     def test_backup_path_overlap_forbidden(self):
         self.cfg['paths']['backups']='data/backups'
