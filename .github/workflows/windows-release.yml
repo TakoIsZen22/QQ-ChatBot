@@ -59,6 +59,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
       - uses: actions/download-artifact@v8
         with:
           name: QQ-ChatBot-Windows-and-source
@@ -68,6 +69,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          RELEASE_SHA: ${{ github.sha }}
           IS_PUBLISHED: ${{ github.event_name == 'release' }}
         run: |
           set -euo pipefail
@@ -77,7 +79,11 @@ jobs:
             gh release upload "$tag" dist/* --clobber
           else
             if gh release view "$tag" >/dev/null 2>&1; then
-              gh release delete "$tag" --yes --cleanup-tag
+              # 只删 Release，不删 tag：--cleanup-tag 会让 tag 消失，重建的 Release
+              # 就会挂在默认 HEAD 上，v1.00.01 会丢掉它专属的源码树。
+              gh release delete "$tag" --yes
+              git tag -f "$tag" "$RELEASE_SHA" 2>/dev/null || true
+              git push --force origin "refs/tags/$tag" 2>/dev/null || true
             fi
             notes=""
             # tag 带 v 前缀（v1.00.02），说明文件通常不带 v，两种都试。
