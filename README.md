@@ -6,14 +6,14 @@ Windows 本机个人 AI 伴侣，采用 **MIT** 许可。本次提供两种发�
 
 | 版本 | 模型接入 | Windows 包 |
 |---|---|---|
-| **1.00.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.01-r1/qq-chatbot-1.00.01-windows-x64.zip) |
-| **1.00.02** | 自有 API + 可选 Magpie 本机网关 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.02-r1/qq-chatbot-1.00.02-windows-x64.zip) |
+| **1.00.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.01-r2/qq-chatbot-1.00.01-windows-x64.zip) |
+| **1.00.02** | 自有 API + 可选 Magpie 本机网关 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.02-r2/qq-chatbot-1.00.02-windows-x64.zip) |
 
 两包均自带 Python 与桌面启动器；1.00.02 的 Magpie 接入使用 `http://127.0.0.1:3425/v1`，不捆绑安装 Magpie。[版本选择、安装与切换](docs/EDITIONS.md)。源码主分支为 1.00.02，1.00.01 由同一份源码经发行脚本生成。
 
 QQ ChatBot负责聊天、陪伴与记忆，不提供外部 Agent、CLI 绑定或工作转交。
 
-当前下载为 **r1 修订**，已移除工作绑定；程序内版本号与模型接入差异仍为 1.00.01 / 1.00.02。旧 Release 保留用于回滚。
+当前下载为 **r2 修订**，已移除工作绑定；程序内版本号与模型接入差异仍为 1.00.01 / 1.00.02。旧 Release 保留用于回滚。
 
 每份安装服务一个使用者，可交给任意获得用户授权的 Agent 或人工维护，不依赖指定 Agent 产品。
 

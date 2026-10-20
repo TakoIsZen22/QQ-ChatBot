@@ -13,7 +13,7 @@
 
 在 Releases 的 Assets 下载所需的 `qq-chatbot-1.00.01-windows-x64.zip` 或 `qq-chatbot-1.00.02-windows-x64.zip`。完整解压到独立可写目录，双击 `QQ ChatBot.exe`；不需要另装 Python。Windows 的 WebView2、.NET Framework 与 VC/UCRT 前提见 GETTING_STARTED.md。
 
-当前修订标签为 `v1.00.01-r1` / `v1.00.02-r1`，两版均移除外部 Agent / CLI 工作绑定。程序版本号与 ZIP 文件名保留原版号；下载时核对修订标签，旧版仅供回滚。
+当前修订标签为 `v1.00.01-r2` / `v1.00.02-r2`，两版均移除外部 Agent / CLI 工作绑定。程序版本号与 ZIP 文件名保留原版号；下载时核对修订标签，旧版仅供回滚。
 
 首次启动保持全部暂停、QQ 未启用、账号及模型 ID 留空。先配置模型，再按程序设置中的首次向导保存双 QQ 账号、下载官方 QQ 组件、扫码登录与验收。两版都不会继承作者的账号、登录态、聊天或私人 soul.md。
 

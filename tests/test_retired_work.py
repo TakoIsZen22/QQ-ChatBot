@@ -19,7 +19,7 @@ from src.core.tools import TOOLS
 class UpgradeTests(unittest.TestCase):
     def test_legacy_binding_ignored_and_removed_only_on_explicit_save(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'config').mkdir()
+            root=Path(directory).resolve();(root/'config').mkdir()
             shutil.copyfile(ROOT/'config/settings.json', root/'config/settings.json')
             path=root/'config/local.json'
             old={'owner':{'name':'测试使用者'},'agent_link':{'enabled':True,'command':['never-execute']}}
@@ -39,7 +39,7 @@ class UpgradeTests(unittest.TestCase):
 class RetiredRoutesTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_work_routes_tools_or_workers_and_history_untouched(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'data').mkdir()
+            root=Path(directory).resolve();(root/'data').mkdir()
             tasks=root/'data/agent_tasks.jsonl'
             raw=b'{"status":"queued","text":"private legacy task"}\n';tasks.write_bytes(raw)
             cfg=load(root/'missing.json')
