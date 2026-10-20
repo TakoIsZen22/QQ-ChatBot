@@ -1,0 +1,28 @@
+{
+  "schema": "qq-chatbot.downloads.v1",
+  "napcat": {
+    "version": "4.18.38",
+    "url": "https://github.com/NapNeko/NapCatQQ/releases/download/v4.18.38/NapCat.Shell.zip",
+    "sha256": "735f2e633247df3ffd6e8ee8b84d7039c315b2655f5807e5f0029f93d2c30016",
+    "max_bytes": 80000000
+  },
+  "qq": {
+    "version": "9.9.33-52230",
+    "url": "https://qqdl.gtimg.cn/qqfile/QQNT/9.9.33/release/497e2f1f/QQ_9.9.33_260813_x64_01.exe",
+    "sha256": "b25c0d3ce9df764074a9118d0ded927e1b2d7ebf60e306112e8df18a040ec492",
+    "max_bytes": 400000000
+  },
+  "python": {
+    "version": "3.13.16",
+    "url": "https://www.python.org/ftp/python/3.13.16/python-3.13.16-embed-amd64.zip",
+    "sha256": "97dae5274cc54867065e8d5a3226e48c35017ed332a0fdb0e27d5b5821961297",
+    "max_bytes": 16000000
+  },
+  "sevenzip": {
+    "version": "26.04",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.04/7z2604-x64.msi",
+    "sha256": "0b01334a418654293513449f61d6bfc99e5196ca371e3c3dc961eda57cd535c6",
+    "max_bytes": 4000000
+  },
+  "limits": {"max_unpacked_bytes": 2000000000, "max_files": 40000, "download_timeout_seconds": 45, "extract_timeout_seconds": 300}
+}

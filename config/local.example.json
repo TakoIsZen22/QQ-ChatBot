@@ -1,0 +1,24 @@
+{
+  "owner": {
+    "name": "你",
+    "qq_id": ""
+  },
+  "maintenance": {
+    "agent_name": "维护 Agent"
+  },
+  "model": {
+    "provider": "magpie",
+    "base_url": "http://127.0.0.1:3425/v1",
+    "key_env": "MAGPIE_API_KEY",
+    "main": "",
+    "auxiliary": ""
+  },
+  "qq": {
+    "enabled": false,
+    "bot_id": ""
+  },
+  "role": {
+    "card": "src/persona/role.md",
+    "evolution_enabled": false
+  }
+}

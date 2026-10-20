@@ -1,0 +1,223 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "max_body_bytes": 8388608
+  },
+  "desktop": {
+    "window_width": 1280,
+    "window_height": 820,
+    "poll_interval_ms": 2000,
+    "request_timeout_seconds": 4,
+    "start_timeout_seconds": 10,
+    "stop_timeout_seconds": 10,
+    "qr_max_age_seconds": 120,
+    "start_with_windows": false,
+    "startup_hidden": true,
+    "auto_start_services": true,
+    "close_to_tray": true,
+    "minimize_to_tray": true,
+    "auto_recover": true,
+    "theme": "light",
+    "font_scale": 1.0,
+    "supervisor_interval_seconds": 10,
+    "max_auto_restarts": 3,
+    "restart_window_seconds": 300,
+    "maintenance_timeout_seconds": 180
+  },
+  "paths": {
+    "data": "data",
+    "logs": "logs",
+    "backups": "backups"
+  },
+  "owner": {
+    "name": "你",
+    "qq_id": ""
+  },
+  "model": {
+    "provider": "magpie",
+    "base_url": "http://127.0.0.1:3425/v1",
+    "main": "",
+    "auxiliary": "",
+    "key_env": "MAGPIE_API_KEY",
+    "models_timeout_seconds": 10,
+    "max_response_bytes": 4194304,
+    "timeout_seconds": 90,
+    "max_tokens": 600,
+    "temperature": 0.8,
+    "history_messages": 24,
+    "max_tool_rounds": 3
+  },
+  "qq": {
+    "enabled": false,
+    "bot_id": "",
+    "client_path": "",
+    "http_url": "http://127.0.0.1:3000",
+    "ws_url": "ws://127.0.0.1:3001",
+    "token_env": "NAPCAT_TOKEN",
+    "history_limit": 20,
+    "reconnect_min_seconds": 2,
+    "reconnect_max_seconds": 60,
+    "media_hosts": [
+      "gxh.vip.qq.com",
+      "gchat.qpic.cn",
+      "c2cpicdw.qpic.cn",
+      "multimedia.nt.qq.com.cn"
+    ],
+    "media_timeout_seconds": 15
+  },
+  "safety": {
+    "mode": "paused",
+    "groups_muted": true,
+    "private_per_minute": 20,
+    "group_per_minute": 5,
+    "irreversible_interval_seconds": 600,
+    "irreversible_per_day": 3,
+    "stop_words": [
+      "停",
+      "闭嘴",
+      "停止",
+      "全部暂停"
+    ]
+  },
+  "conversation": {
+    "min_delay_seconds": 0.8,
+    "max_delay_seconds": 2.2,
+    "night_multiplier": 1.8,
+    "max_bubbles": 3,
+    "bubble_chars": 160,
+    "max_input_chars": 12000,
+    "queue_size": 100
+  },
+  "memory": {
+    "retrieval_limit": 8,
+    "short_half_life_days": 3,
+    "important_half_life_days": 18,
+    "max_content_chars": 2000
+  },
+  "role": {
+    "card": "src/persona/role.md",
+    "evolution_enabled": false,
+    "soul_file": "persona/soul.md",
+    "soul_max_chars": 12000,
+    "soul_max_bytes": 65536,
+    "soul_history_limit": 20
+  },
+  "diary": {
+    "daily_limit": 3,
+    "max_chars": 140
+  },
+  "impression": {
+    "enabled": true,
+    "plugin": "",
+    "refresh_hours": 24
+  },
+  "awakening": {
+    "enabled": false,
+    "min_minutes": 45,
+    "max_minutes": 110,
+    "idle_minutes": 15,
+    "probability": 0.35,
+    "quiet_start": 23,
+    "quiet_end": 8,
+    "sleep_hour": 4,
+    "timezone": "Asia/Hong_Kong"
+  },
+  "music": {
+    "enabled": false,
+    "allow_control": false,
+    "allowed_sources": [],
+    "max_lyrics_chars": 2000
+  },
+  "growth": {
+    "work": 0.2,
+    "companion": 0.6,
+    "learning": 0.2
+  },
+  "learning": {
+    "enabled": false,
+    "allowed_hosts": [],
+    "search_url": "",
+    "max_page_bytes": 200000,
+    "max_items_per_day": 3,
+    "idle_plans": []
+  },
+  "devices": {
+    "enabled": false,
+    "adb_path": "adb",
+    "serial": "",
+    "device_kind": "",
+    "allowed_packages": [],
+    "timeout_seconds": 15,
+    "max_macro_steps": 20
+  },
+  "voice": {
+    "enabled": false,
+    "python": "",
+    "whisper_model": "base",
+    "model_dir": ".runtime/whisper",
+    "cpu_threads": 2,
+    "initial_prompt": "以下是用户与大肥鱼的普通话对话，请使用简体中文。",
+    "language": "zh",
+    "timeout_seconds": 180,
+    "tts_command": [],
+    "max_audio_bytes": 20000000
+  },
+  "plugins": {
+    "enabled": false,
+    "allowed": [],
+    "mcp": [],
+    "publish_enabled": false
+  },
+  "stickers": {
+    "enabled": false,
+    "daily_limit": 5,
+    "recognition_enabled": true,
+    "max_image_bytes": 5242880,
+    "max_pixels": 16000000,
+    "preview_edge": 768,
+    "animation_samples": 3,
+    "max_animation_frames": 300,
+    "library_limit": 100,
+    "max_images_per_turn": 3
+  },
+  "maintenance": {
+    "agent_name": "维护 Agent"
+  },
+  "identity": {
+    "default_nickname": "大肥鱼",
+    "default_image": "assets/xiaojing-user-icon.png",
+    "default_icon_ico": "assets/xiaojing-user-icon.ico",
+    "stream": "persona/identity",
+    "asset_dir": "persona/appearance",
+    "max_nickname_chars": 24,
+    "max_appearance_chars": 2000,
+    "max_image_bytes": 2097152,
+    "max_pixels": 16000000,
+    "portrait_edge": 1024,
+    "icon_edge": 256,
+    "ico_sizes": [
+      16,
+      24,
+      32,
+      48,
+      64,
+      128,
+      256
+    ]
+  },
+  "agent_link": {
+    "enabled": false,
+    "name": "工作 Agent",
+    "transport": "desktop",
+    "command": [],
+    "cwd": "",
+    "notify_result": false,
+    "timeout_seconds": 600,
+    "max_task_chars": 6000,
+    "max_output_bytes": 131072,
+    "max_result_chars": 12000,
+    "pending_limit": 10,
+    "history_limit": 50
+  }
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="288" viewBox="0 0 1060 288" role="img" aria-labelledby="title desc">
+<title id="title">Magpie 可选接入：五步完成</title><desc id="desc">保持 Magpie 运行，选择本机网关，读取清单选模型，保存并重启聊天，在本机验证。</desc>
+<rect width="1060" height="288" rx="20" fill="#111c30"/>
+<g font-family="Segoe UI,Microsoft YaHei,sans-serif"><text x="30" y="43" fill="#f0f5ff" font-size="21" font-weight="700">已有 Magpie？按这五步接通</text><text x="30" y="72" fill="#a9bbd7" font-size="13">Magpie 为可选项 · 不使用它，也可以接入自己的兼容 API</text>
+<g fill="#1e2d47" stroke="#354b70"><rect x="30" y="101" width="185" height="139" rx="12"/><rect x="232" y="101" width="185" height="139" rx="12"/><rect x="434" y="101" width="185" height="139" rx="12"/><rect x="636" y="101" width="185" height="139" rx="12"/><rect x="838" y="101" width="192" height="139" rx="12"/></g>
+<g fill="#83a9ff" font-size="15" font-weight="700"><text x="47" y="128">01</text><text x="249" y="128">02</text><text x="451" y="128">03</text><text x="653" y="128">04</text><text x="855" y="128">05</text></g>
+<g fill="#edf3ff" font-size="16" font-weight="600"><text x="47" y="161">保持 Magpie 运行</text><text x="249" y="161">选择本机网关</text><text x="451" y="161">读取并选择模型</text><text x="653" y="161">保存并重启聊天</text><text x="855" y="161">在本机验证</text></g>
+<g fill="#b4c5df" font-size="12"><text x="47" y="190">至少一个可用供应商</text><text x="47" y="211">已有配置可直接复用</text><text x="249" y="190">设置 → 模型与 API 接入</text><text x="249" y="211">默认 127.0.0.1:3425/v1</text><text x="451" y="190">主模型 + 视觉辅助模型</text><text x="451" y="211">使用你的完整模型 ID</text><text x="653" y="190">先保存，再重启核心</text><text x="653" y="211">手动恢复「只回复」</text><text x="855" y="190">一句问候 + 一张普通图片</text><text x="855" y="211">QQ 可以之后再接</text></g>
+<text x="30" y="267" fill="#9badc9" font-size="12">操作示意 · 厂商密钥和订阅登录在 Magpie 中管理；不用复制给QQ ChatBot或维护 Agent</text></g></svg>

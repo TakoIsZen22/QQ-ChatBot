@@ -1,0 +1,3 @@
+aiohttp>=3.11,<4
+tzdata>=2025.1
+Pillow>=12,<14
