@@ -9,6 +9,7 @@ from pathlib import Path
 from .config import ROOT,load,save_local,merge,validate
 from .runtime_downloads import catalog,download,safe_zip
 from .runtime_paths import python_command,portable
+from .system_qq import find_usable
 
 HIDDEN=getattr(subprocess,'CREATE_NO_WINDOW',0)
 
@@ -26,7 +27,9 @@ class Onboarding:
         return {'portable':portable(),'configured':bool(cfg['owner']['qq_id'] and cfg['qq']['bot_id'] and cfg['model']['main']),
             'accounts':{'owner_name':cfg['owner']['name'],'owner_id':cfg['owner']['qq_id'],'bot_id':cfg['qq']['bot_id']},
             'model':{k:cfg['model'][k] for k in ('provider','base_url','key_env','main','auxiliary')},
-            'components':{'napcat':(ROOT/'.runtime/napcat/NapCatWinBootMain.exe').is_file(),'qq':qq.is_file()},'job':job}
+            'components':{'napcat':(ROOT/'.runtime/napcat/NapCatWinBootMain.exe').is_file(),'qq':qq.is_file()},
+            'qq_client':{'path':str(qq) if qq.is_file() else '','reused':bool(cfg['qq']['client_path'] and not str(cfg['qq']['client_path']).startswith(str(ROOT/'.runtime')))},
+            'job':job}
 
     def save(self,body):
         if not isinstance(body,dict) or set(body)!={'owner_name','owner_id','bot_id','model'}:raise ValueError('首次设置字段无效')
@@ -91,20 +94,26 @@ class Onboarding:
                     if nap.exists():nap.rmdir()
                     (stage/'napcat').rename(nap)
                 if not installed['qq']:
-                    if qq.exists() and any(qq.iterdir()):raise ValueError('独立 QQ 目录已有不完整文件，向导不会覆盖，请交由维护者检查')
-                    self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
-                    archive=download(cfg['qq'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
-                    seven=self._sevenzip(cfg)
-                    self.update(stage='extract',message='正在解压独立机器人 QQ，不修改系统 QQ…')
-                    dest=stage/'qq-client';dest.mkdir()
-                    subprocess.run([str(seven),'x',str(archive),'-y','-o'+str(dest)],creationflags=HIDDEN,check=True,timeout=cfg['limits']['extract_timeout_seconds'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-                    binaries=list(dest.rglob('QQ.exe'))
-                    if len(binaries)!=1 or not binaries[0].parent.is_relative_to(dest):raise ValueError('QQ 安装包结构已变化，请由维护者更新适配')
-                    client=binaries[0].parent
-                    if not (client/'resources/app/package.json').is_file() and not (client/'versions/config.json').is_file():raise ValueError('QQ 版本元数据缺失')
-                    if qq.exists():qq.rmdir()
-                    client.rename(qq)
-                    save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
+                    # 本机已装 QQ 就直接复用，省掉一次几百 MB 的下载。
+                    system=find_usable()
+                    if system:
+                        self.update(stage='qq',message='检测到本机已安装 QQ，正在复用…',received=0,total=0)
+                        save_local({'qq':{'client_path':system['path']}})
+                    else:
+                        if qq.exists() and any(qq.iterdir()):raise ValueError('独立 QQ 目录已有不完整文件，向导不会覆盖，请交由维护者检查')
+                        self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
+                        archive=download(cfg['qq'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
+                        seven=self._sevenzip(cfg)
+                        self.update(stage='extract',message='正在解压独立机器人 QQ，不修改系统 QQ…')
+                        dest=stage/'qq-client';dest.mkdir()
+                        subprocess.run([str(seven),'x',str(archive),'-y','-o'+str(dest)],creationflags=HIDDEN,check=True,timeout=cfg['limits']['extract_timeout_seconds'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                        binaries=list(dest.rglob('QQ.exe'))
+                        if len(binaries)!=1 or not binaries[0].parent.is_relative_to(dest):raise ValueError('QQ 安装包结构已变化，请由维护者更新适配')
+                        client=binaries[0].parent
+                        if not (client/'resources/app/package.json').is_file() and not (client/'versions/config.json').is_file():raise ValueError('QQ 版本元数据缺失')
+                        if qq.exists():qq.rmdir()
+                        client.rename(qq)
+                        save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
                 elif not load()['qq']['client_path'] and (qq/'QQ.exe').is_file():save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
             self.update(running=False,stage='done',message='组件已准备好。保存账号后即可启动扫码。',received=0,total=0)
         except Exception as e:

@@ -8,7 +8,9 @@
  async function refresh(){
    if(!$('#onboarding-dialog').open)return;
    last=await N().onboarding('status');const j=last.job;
-   $('#setup-download-state').textContent=j.message+'\nNapCat：'+(last.components.napcat?'已就绪':'待准备')+' · 独立 QQ：'+(last.components.qq?'已就绪':'待准备');
+   // 复用本机已装的 QQ 时不显示为「独立 QQ」，避免用户以为程序又装了一份。
+   const qqLabel=last.qq_client?.reused?'QQ：已复用本机安装':'QQ：'+(last.components.qq?'已就绪':'待准备');
+   $('#setup-download-state').textContent=j.message+'\nNapCat：'+(last.components.napcat?'已就绪':'待准备')+' · '+qqLabel;
    $('#setup-download').disabled=j.running||busy;$('#setup-save').disabled=j.running||busy;$('#setup-start').disabled=j.running||busy;
    const progress=$('#setup-progress');progress.hidden=!j.running;if(j.total){progress.value=j.received/j.total;$('#setup-download-state').textContent+='\n'+Math.round(j.received/1024/1024)+' / '+Math.round(j.total/1024/1024)+' MB'}else progress.removeAttribute('value');
    const online=D().state.status?.qq_online&&D().state.status?.qq_connected;$('#setup-finish').disabled=!online;

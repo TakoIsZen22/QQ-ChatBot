@@ -16,8 +16,9 @@ def main():
     if binary is None:
         return subprocess.call(['cmd.exe','/c',str(runtime/'launcher-user.bat'),bot],cwd=runtime)
     binary=binary.resolve()
-    if not binary.is_file():raise ValueError('qq.client_path 指向的独立 QQ.exe 不存在')
+    if not binary.is_file():raise ValueError('qq.client_path 指向的 QQ 客户端不存在')
     # 与当前二进制配套的版本元数据，避免旧 Shell 包固定元数据造成登录版本误报。
+    # 复用系统 QQ 时元数据在 versions/<版本>/resources/app 下，同样要取配套的那份。
     package=binary.parent/'resources/app/package.json'
     versions=binary.parent/'versions/config.json'
     if not package.is_file() and versions.is_file():
@@ -25,7 +26,7 @@ def main():
         candidate=(binary.parent/'versions'/version/'resources/app/package.json').resolve()
         if not candidate.is_relative_to(binary.parent):raise ValueError('QQ 版本路径无效')
         package=candidate
-    if not package.is_file():raise ValueError('无法定位独立 QQ 的原始 package.json，拒绝沿用旧版本元数据')
+    if not package.is_file():raise ValueError('无法定位 QQ 客户端的原始 package.json，拒绝沿用旧版本元数据')
     patch=json.loads(package.read_text(encoding='utf-8-sig'))
     patch['main']='./loadNapCat.js'
     generated=runtime/'qqnt-local-client.json'
