@@ -156,6 +156,14 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_agent_output_decodes_common_windows_encodings(self):
+        """外部 CLI 的输出编码不固定，Windows 英文区域常为 cp1252。"""
+        from src.core.agent_link import decode_agent_output
+        self.assertEqual(decode_agent_output('外部回执'.encode('utf-8')),'外部回执')
+        self.assertEqual(decode_agent_output('外部回执'.encode('gbk')),'外部回执')
+        self.assertEqual(decode_agent_output(b'plain ascii result'),'plain ascii result')
+        self.assertEqual(decode_agent_output(b''),'')
+
     def test_mcp_stdio_protocol_only_exposes_work_tools(self):
         server=Server();self.assertIsNone(server.handle({'jsonrpc':'2.0','method':'notifications/initialized'}))
         init=server.handle({'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-06-18'}})

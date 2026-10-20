@@ -13,6 +13,20 @@ TERMINAL={'completed','failed','cancelled','interrupted'}
 ACTIVE={'queued','running','cancel_requested'}
 
 
+def decode_agent_output(raw):
+    """解码外部 Agent 的标准输出。
+
+    外部 CLI 的输出编码不固定：可能是 UTF-8，也可能是 Windows 当前 ANSI 代码页
+    （英文区域为 cp1252，中文区域为 cp936）。按顺序尝试，取第一个能严格解码的，
+    全部失败时退回 UTF-8 容错解码，避免把正常回执显示成乱码。
+    """
+    if not raw:return ''
+    for encoding in ('utf-8','gbk','cp936','cp1252','latin-1'):
+        try:return raw.decode(encoding).strip()
+        except (UnicodeDecodeError,LookupError):continue
+    return raw.decode('utf-8',errors='replace').strip()
+
+
 def validate_binding(c):
     if type(c['enabled']) is not bool or type(c['notify_result']) is not bool:raise ValueError('Agent 开关必须是布尔值')
     if c['transport'] not in ('cli','desktop'):raise ValueError('请选择 CLI 或桌面 Agent')
@@ -169,7 +183,9 @@ class AgentLink:
                     await asyncio.gather(writer,out,err,return_exceptions=True)
             stdout,stderr=await asyncio.wait_for(communicate(),self.cfg['timeout_seconds'])
             # stderr may contain authentication output; never persist or show raw stderr.
-            result=stdout.decode('utf-8',errors='replace').strip()
+            # 外部 CLI 的输出编码不一定是 UTF-8（Windows 英文区域默认 ANSI 代码页），
+            # 逐个尝试常见编码，避免把正常回执解成乱码。
+            result=decode_agent_output(stdout)
             if proc.returncode:raise ValueError('外部 CLI 非正常退出（exit '+str(proc.returncode)+'），请在 Agent 自身查看原因；不会自动重试')
             if not result:raise ValueError('外部 CLI 没有返回最终文本；请使用非交互模式或适配脚本')
             if len(result)>self.cfg['max_result_chars']:raise ValueError('Agent 回执超过文本上限，请调整绑定或使用适配脚本')
