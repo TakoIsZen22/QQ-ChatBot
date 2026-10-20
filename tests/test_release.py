@@ -23,7 +23,7 @@ class ReleaseTests(unittest.TestCase):
         self.write('config/local.example.json','{}')
         self.write('config/local.json',json.dumps({'owner':{'qq_id':'12345678901','name':'private-owner'}}))
         for name in ('data/chat.jsonl','logs/events.jsonl','backups/personal.json','config/persona.local.md',
-                     '.runtime/napcat/login.json','.git/config','user_plugins/private.py','src/secret.local.py',
+                     '.runtime/qq-native/private-session.json','.git/config','user_plugins/private.py','src/secret.local.py',
                      'src/soul.md','docs/SOUL.md','data/persona/identity.jsonl','data/persona/appearance/icon-private.ico'):
             self.write(name,'DO-NOT-SHARE')
 
@@ -63,3 +63,8 @@ class ReleaseTests(unittest.TestCase):
         self.cfg['model'].update(provider='openai_compatible',base_url='https://api.example.com/v1')
         self.write('config/settings.json',json.dumps(self.cfg))
         with self.assertRaisesRegex(ValueError,'自定义 API'):build_release(self.root)
+
+    def test_public_package_cannot_include_group_subscriptions(self):
+        self.cfg['group_monitor']['groups'] = [{'group_id':'11111','name':'私人群','enabled':False}]
+        self.write('config/settings.json',json.dumps(self.cfg))
+        with self.assertRaisesRegex(ValueError,'监听群号'):build_release(self.root)

@@ -7,10 +7,16 @@ from urllib.parse import urlsplit
 MAGPIE_URL='http://127.0.0.1:3425/v1'
 
 
-def endpoint(cfg):
+def endpoint(cfg, *, allow_unconfigured=False):
     provider=cfg.get('provider','magpie')
     if provider not in ('magpie','openai_compatible'):raise ValueError('请选择 Magpie 或自定义 OpenAI 兼容 API')
+    from .edition import require_provider
+    require_provider(provider)
     url=cfg.get('base_url')
+    if url=='' and provider=='openai_compatible':
+        if not re.fullmatch(r'[A-Z_][A-Z0-9_]*',str(cfg.get('key_env',''))):raise ValueError('key_env 只能填环境变量名称')
+        if allow_unconfigured and not cfg.get('main') and not cfg.get('auxiliary'):return ''
+        raise ValueError('尚未填写 API Base URL，请在模型设置中配置')
     if not isinstance(url,str) or not url or len(url)>2048 or any(c.isspace() or ord(c)<32 for c in url) or '\\' in url:
         raise ValueError('API Base URL 格式无效')
     try:
@@ -36,7 +42,9 @@ def label(cfg):return 'Magpie' if cfg.get('provider','magpie')=='magpie' else '�
 
 
 def probe_port(cfg,timeout=.5):
-    url=urlsplit(endpoint(cfg))
+    address=endpoint(cfg,allow_unconfigured=True)
+    if not address:return False
+    url=urlsplit(address)
     try:
         with socket.create_connection((url.hostname,url.port or (443 if url.scheme=='https' else 80)),timeout=timeout):return True
     except OSError:return False

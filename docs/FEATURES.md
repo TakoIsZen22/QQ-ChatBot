@@ -28,7 +28,7 @@
 
 辅助视觉模型名称填 `model.auxiliary`，走当前选择的模型 API。同一个兼容图片的模型可同时用于 main/auxiliary，但不要把不支持图片的路由填为辅助模型。
 
-NapCat get_image 必须返回可读本机路径；harness 复制到 data/media，将图片送本机网关的辅助视觉路由描述，再记录 media_id。没有图像描述，不准收藏；模型不能从未知备注瞎猜。启用 `stickers.enabled=true` 后支持 list_stickers / sticker_note / collect_sticker / send_sticker，默认一天最多五轮，每轮一张、单独图像消息。认真、道歉等关键词会额外阻止表情，语义边界仍依赖人设提示。不开启时不会发送。
+QQ图片仅通过事件中已有的HTTPS URL进入受限CDN读取与辅助视觉模型；原生真实媒体待验收。
 
 本机聊天窗口当前展示表情描述；真实图片通过 QQ 独立 image segment 发出。收藏来源为已经观察过的主人图片，不抓取任意 URL。辅助视觉需按本次安装选择真实可用的模型，并用自己的图片测试；文本连通不代表视觉通过。
 
@@ -57,7 +57,7 @@ Invoke-RestMethod 'http://127.0.0.1:8765/api/music' -Method Post -Headers $heade
 .\tools\install-voice.bat
 ```
 
-脚本选择已安装的 Python 3.11（包括本机 uv/Astral provider），创建 .venv-voice，安装 CPU 版 torch、openai-whisper 和 scipy。无3.11时明确失败，不自行替换系统Python。16bit PCM WAV 可直接读入并本机重采样，无需 ffmpeg；其他压缩音频需另装 ffmpeg。NapCat get_record 默认请求 wav。
+脚本选择已安装的 Python 3.11（包括本机 uv/Astral provider），创建 .venv-voice，安装 CPU 版 torch、openai-whisper 和 scipy。无3.11时明确失败，不自行替换系统Python。16bit PCM WAV 可直接读入并本机重采样，无需 ffmpeg；其他压缩音频需另装 ffmpeg。当前QQ语音附件尚未实现，本机音频转写可独立使用。
 
 首次运行 whisper 会下载模型权重，依尺寸和网络耗时；这是模型下载，不是上传语音。CPU 默认 fp16=false，可先用 base。配置：
 
@@ -65,7 +65,7 @@ Invoke-RestMethod 'http://127.0.0.1:8765/api/music' -Method Post -Headers $heade
 {"voice":{"enabled":true,"python":"E:\\QQ Bot Harness\\.venv-voice\\Scripts\\python.exe","whisper_model":"base","language":"zh"}}
 ```
 
-本机音频放 `data/media` 内，工作台填绝对路径进行转写；QQ 语音先由本机 NapCat get_record 转 wav，再由本机 whisper 子进程转文字。拒绝从事件给出的第三方 URL 下载转写服务，不提供任何云 STT 回退。
+本机音频放 `data/media` 内，工作台填绝对路径进行转写；QQ语音附件尚未接入；本机音频由whisper子进程转文字。拒绝从事件给出的第三方 URL 下载转写服务，不提供任何云 STT 回退。
 
 语音回复提供 `tools/tts.py`，使用 Windows 自带 System.Speech 离线中文音色，本机已实际合成 16kHz WAV。文字通过 stdin JSON 传给固定脚本，不插入 PowerShell 代码。Windows 没有中文音色时明确报错，需要用户在系统设置安装中文语音。
 

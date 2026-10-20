@@ -4,6 +4,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+def migrate_local(value):
+    """Retire the previous external transport configuration without reading credentials."""
+    value=copy.deepcopy(value)
+    if isinstance(value,dict) and isinstance(value.get('qq'),dict):
+        for key in ('http_url','ws_url','token_env','webui_url','history_limit'):
+            value['qq'].pop(key,None)
+    return value
+
 def merge(a, b):
     if not isinstance(b,dict):raise ValueError('配置覆盖必须是对象')
     for k, v in b.items():
@@ -15,7 +23,7 @@ def load(path=None):
     base = json.loads((ROOT / 'config/settings.json').read_text(encoding='utf-8-sig'))
     local = Path(path) if path else ROOT / 'config/local.json'
     if local.exists():
-        merge(base, json.loads(local.read_text(encoding='utf-8-sig')))
+        merge(base, migrate_local(json.loads(local.read_text(encoding='utf-8-sig'))))
     validate(base)
     return copy.deepcopy(base)
 
@@ -25,7 +33,7 @@ def save_local(patch):
     merge(candidate,patch)
     validate(candidate)
     path=ROOT/'config/local.json'
-    local=json.loads(path.read_text(encoding='utf-8-sig')) if path.exists() else {}
+    local=migrate_local(json.loads(path.read_text(encoding='utf-8-sig'))) if path.exists() else {}
     def overlay(a,b):
         for k,v in b.items():
             if isinstance(v,dict):overlay(a.setdefault(k,{}),v)
@@ -46,6 +54,8 @@ def validate(c):
         if isinstance(value,list):
             for v in value:finite(v)
     finite(c)
+    from ..modules.group_monitor import validate_monitor
+    validate_monitor(c['group_monitor'])
     from .agent_link import validate_binding
     validate_binding(c['agent_link'])
     identity=c['identity']
@@ -67,6 +77,9 @@ def validate(c):
         if not isinstance(value,str) or not value.strip() or len(value)>limit or any(ord(ch)<32 for ch in value):raise ValueError(label+'必须为非空单行短文本')
     if c['qq']['enabled'] and (not str(c['qq']['bot_id']).isdigit() or str(c['qq']['bot_id'])==str(c['owner']['qq_id'])):
         raise ValueError('启用 QQ 需要与主人不同的机器人 QQ 号')
+    native_port=c['qq']['native_port']
+    if type(native_port) is not int or not 1024<=native_port<=65535 or native_port in (3425,c['server']['port']):
+        raise ValueError('原生桥接实验端口无效或冲突')
     d=c['desktop']
     for name in ('start_with_windows','startup_hidden','auto_start_services','close_to_tray','minimize_to_tray','auto_recover'):
         if type(d[name]) is not bool:raise ValueError('程序开关必须是布尔值: '+name)
@@ -81,17 +94,11 @@ def validate(c):
     if not isinstance(c['qq']['media_hosts'],list) or any(not isinstance(host,str) or not re.fullmatch(r'[a-z0-9.-]+',host) for host in c['qq']['media_hosts']):raise ValueError('QQ图片CDN必须填写精确域名，不能包含通配符或URL')
     if d['poll_interval_ms']<250 or min(d['request_timeout_seconds'],d['start_timeout_seconds'],d['stop_timeout_seconds'],d['qr_max_age_seconds'])<=0:raise ValueError('桌面端轮询/超时参数无效')
     if not isinstance(c['server']['port'],int) or not 1024<=c['server']['port']<=65535 or c['server']['port']==3425:raise ValueError('本机 UI 端口无效或与 Magpie 冲突')
-    for name in (c['model']['key_env'],c['qq']['token_env']):
-        if not re.fullmatch(r'[A-Z_][A-Z0-9_]*',name):raise ValueError('key_env/token_env 只能填环境变量名称，不能填密钥')
+    if not re.fullmatch(r'[A-Z_][A-Z0-9_]*',c['model']['key_env']):raise ValueError('key_env 只能填环境变量名称，不能填密钥')
     from .model_endpoint import endpoint
-    endpoint(c['model'])
+    endpoint(c['model'],allow_unconfigured=True)
     if c['server']['host'] != '127.0.0.1':
         raise ValueError('管理界面只允许绑定 127.0.0.1')
-    from urllib.parse import urlsplit
-    for name in ('http_url', 'ws_url'):
-        u = urlsplit(c['qq'][name])
-        if u.hostname != '127.0.0.1' or u.username or u.password or u.query or u.fragment or u.scheme not in ('http', 'ws'):
-            raise ValueError('OneBot 必须是无凭据的本机 HTTP/WS 地址')
     s = c['safety']
     if s['mode'] not in ('paused', 'reply_only', 'active'):
         raise ValueError('safety.mode 无效')

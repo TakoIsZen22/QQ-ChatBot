@@ -2,6 +2,8 @@
 .venv-voice/
 .venv-desktop/
 .runtime/
+.codex-remote-attachments/
+*.zip.sha256
 __pycache__/
 *.pyc
 data/

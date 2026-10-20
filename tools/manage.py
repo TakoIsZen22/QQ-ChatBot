@@ -109,8 +109,7 @@ def main():
         ports={'harness':cfg['server']['port']}
         if cfg['qq']['enabled']:
             from urllib.parse import urlsplit
-            ports['onebot_http']=urlsplit(cfg['qq']['http_url']).port or 80
-            ports['onebot_ws']=urlsplit(cfg['qq']['ws_url']).port or 80
+            ports['qq_native']=cfg['qq']['native_port']
         report={'ports':{k:port_open(p) for k,p in ports.items()}}
         from src.core.model_endpoint import probe_port
         report['ports']['model_api']=probe_port(cfg['model'])

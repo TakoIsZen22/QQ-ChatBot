@@ -52,10 +52,7 @@
     "enabled": false,
     "bot_id": "",
     "client_path": "",
-    "http_url": "http://127.0.0.1:3000",
-    "ws_url": "ws://127.0.0.1:3001",
-    "token_env": "NAPCAT_TOKEN",
-    "history_limit": 20,
+    "native_port": 3002,
     "reconnect_min_seconds": 2,
     "reconnect_max_seconds": 60,
     "media_hosts": [
@@ -65,6 +62,12 @@
       "multimedia.nt.qq.com.cn"
     ],
     "media_timeout_seconds": 15
+  },
+  "group_monitor": {
+    "groups": [],
+    "max_groups": 12,
+    "history_limit": 100,
+    "max_text_chars": 2000
   },
   "safety": {
     "mode": "paused",

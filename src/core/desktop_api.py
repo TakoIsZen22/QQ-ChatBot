@@ -16,8 +16,8 @@ from .service_intent import ServiceIntent
 from .product import is_harness
 from ..version import VERSION
 
-READ_ENDPOINTS={'status','chat','memory','diary','config','models','sticker-intents','supervision','soul','identity','agent-work'}
-WRITE_ENDPOINTS={'chat','memory','diary','growth','promise','safety','config','emotion','music','device','study','mcp','persona','transcribe','share','sticker-intents','soul','identity','model-connection','agent-work','agent-binding'}
+READ_ENDPOINTS={'status','chat','memory','diary','config','models','sticker-intents','supervision','soul','identity','agent-work','group-monitor'}
+WRITE_ENDPOINTS={'chat','memory','diary','growth','promise','safety','config','emotion','music','device','study','mcp','persona','transcribe','share','sticker-intents','soul','identity','model-connection','agent-work','agent-binding','group-monitor'}
 DATA_STREAMS={'emotion','impressions','growth','promises','promise_results','learning','learning_reviews','notifications','plugin_audit','sleep_runs','share_drafts','media','stickers'}
 
 class DesktopApi:
@@ -39,6 +39,8 @@ class DesktopApi:
         if action=='save':return self._onboarding.save(body)
         if action=='install':return self._onboarding.install()
         if action=='start':return self._onboarding.start()
+        if action=='refresh_qr':return self._onboarding.refresh_qr()
+        if action=='stop':return self._onboarding.stop()
         raise PermissionError('未允许的首次设置操作')
 
     def agent_connection(self):
@@ -120,7 +122,8 @@ class DesktopApi:
         try:
             from urllib.parse import urlsplit
             missing_core=not self._backend.port(cfg['server']['port'])
-            missing_qq=cfg['qq']['enabled'] and not self._backend.port(urlsplit(cfg['qq']['ws_url']).port or 80)
+            # Experimental QQ has no automatic process launcher in this release.
+            missing_qq=False
             if not (missing_core or missing_qq):return
             self._recoveries=[t for t in self._recoveries if now-t<d['restart_window_seconds']]
             if len(self._recoveries)>=d['max_auto_restarts']:return
@@ -135,7 +138,7 @@ class DesktopApi:
         url=urlsplit(path)
         if url.scheme or url.netloc or url.fragment or '..' in url.path:raise PermissionError('桌面请求仅允许固定本机接口')
         endpoint=url.path
-        queries={'memory':{'q'},'identity':{'revision'}}
+        queries={'memory':{'q'},'identity':{'revision'},'group-monitor':{'group_id'}}
         if url.query and (endpoint not in queries or set(parse_qs(url.query,keep_blank_values=True))!=queries[endpoint]):raise PermissionError('查询参数不在允许清单')
         allowed=endpoint in (READ_ENDPOINTS if body is None else WRITE_ENDPOINTS)
         if endpoint.startswith('data/') and body is None:allowed=endpoint[5:] in DATA_STREAMS-{'promise_results','learning_reviews'}
@@ -192,8 +195,8 @@ class DesktopApi:
         if not self._gateway_probe or self._gateway_probe[0]!=key or now-self._gateway_probe[1]>=cfg['desktop']['supervisor_interval_seconds']:
             self._gateway_probe=(key,now,probe_port(cfg['model']))
         return {'core':self._backend.port(cfg['server']['port']),'gateway':self._gateway_probe[2],
-                'qq_http':self._backend.port(urlsplit(cfg['qq']['http_url']).port or 80),
-                'qq_ws':self._backend.port(urlsplit(cfg['qq']['ws_url']).port or 80),
+                'qq_native':self._backend.port(cfg['qq']['native_port']),
+                'qq_experimental':True,'qq_launch_available':False,
                 'desktop':True,'version':VERSION,'poll_interval_ms':cfg['desktop']['poll_interval_ms'],'usage':self._usage_today(cfg)}
 
     def _usage_today(self,cfg):
@@ -213,16 +216,38 @@ class DesktopApi:
         return {'day':today.isoformat(),'total_tokens':total if samples else None,'samples':samples}
 
     def qr(self):
-        cfg=load();path=ROOT/'.runtime/napcat/cache/qrcode.png'
-        if not path.is_file():return {'state':'missing'}
+        cfg=load();path=ROOT/'.runtime/qq-native/qrcode.png'
+        from .qq_native import status
+        current=status(ROOT)
+        phase=current.get('phase','not_running')
+        messages={
+            'not_running':'QQ 接入尚未启动。点击“启动 QQ”，等待二维码出现。',
+            'stopped':'QQ 接入已停止。点击“启动 QQ”重新扫码。',
+            'starting':'正在启动 QQ 接入，请稍候…',
+            'loading_kernel':'正在加载 QQ 组件，请稍候…',
+            'connecting':'正在连接 QQ 登录服务，请稍候…',
+            'generating_qrcode':'正在生成二维码，请稍候…',
+            'qrcode_scanned':'已扫码，请在机器人账号的手机 QQ 上确认登录。',
+            'initializing':'登录已确认，正在连接消息服务…',
+            'ready':'QQ 已登录，无需扫码。',
+            'offline':'QQ 连接已断开。请先停止 QQ，再点击启动重新扫码。',
+            'qrcode_expired':'二维码已过期，点击“刷新二维码”获取新码。',
+        }
+        if phase!='waiting_qrcode':
+            return {'state':'expired' if phase=='qrcode_expired' else 'unavailable',
+                    'phase':phase,'message':messages.get(phase,'QQ 接入异常，请在运行记录查看诊断，或停止后重新启动。')}
+        if not path.is_file():return {'state':'missing','phase':phase,'message':'正在等待二维码，请稍候…'}
         age=time.time()-path.stat().st_mtime
-        if age>cfg['desktop']['qr_max_age_seconds']:return {'state':'expired'}
+        if age>cfg['desktop']['qr_max_age_seconds']:return {'state':'expired','phase':phase,'message':'二维码已过期，点击“刷新二维码”获取新码。'}
         if path.stat().st_size>cfg['server']['max_body_bytes']:raise ValueError('二维码文件过大')
         raw=path.read_bytes()
         if not raw.startswith(b'\x89PNG\r\n\x1a\n'):raise ValueError('二维码不是有效PNG')
-        return {'state':'ready','data_url':'data:image/png;base64,'+base64.b64encode(raw).decode(),'age_seconds':round(max(0,age))}
+        return {'state':'ready','phase':phase,'data_url':'data:image/png;base64,'+base64.b64encode(raw).decode(),'age_seconds':round(max(0,age))}
 
     def open_target(self,target):
+        if target in ('magpie_guide','magpie_official_docs'):
+            from .edition import require_provider
+            require_provider('magpie')
         cfg=load()
         if target=='soul':
             from .soul import Soul
@@ -233,9 +258,9 @@ class DesktopApi:
         files={'project':ROOT,'handoff':ROOT/'HANDOFF.md','logs':ROOT/cfg['paths']['logs'],
                'data':ROOT/cfg['paths']['data'],'backups':ROOT/cfg['paths']['backups'],
                'diagnostics':ROOT/'.runtime/diagnostics','help':ROOT/'docs/DESKTOP.md','agent_work_guide':ROOT/'docs/AGENT_WORK.md',
-               'agent_guide':ROOT/'docs/AGENT_SUPERVISION.md','agent_rules':ROOT/'AGENTS.md','model_api_guide':ROOT/'docs/MODEL_API.md','magpie_guide':ROOT/'docs/MAGPIE_SETUP.md','getting_started':ROOT/'docs/GETTING_STARTED.md'}
+               'agent_guide':ROOT/'docs/AGENT_SUPERVISION.md','agent_rules':ROOT/'AGENTS.md','model_api_guide':ROOT/'docs/MODEL_API.md','magpie_guide':ROOT/'docs/MAGPIE_SETUP.md','getting_started':ROOT/'docs/GETTING_STARTED.md','qq_guide':ROOT/'docs/QQ_SETUP.md'}
         for key in ('backups','diagnostics'):files[key].mkdir(parents=True,exist_ok=True)
-        urls={'napcat':cfg['qq'].get('webui_url','http://127.0.0.1:6099/webui'),'web':f'http://127.0.0.1:{cfg["server"]["port"]}','magpie_official_docs':'https://usemagpie.ai/docs/zh/start'}
+        urls={'web':f'http://127.0.0.1:{cfg["server"]["port"]}','magpie_official_docs':'https://usemagpie.ai/docs/zh/start'}
         if target in files:os.startfile(str(files[target]))
         elif target in urls:webbrowser.open(urls[target])
         else:raise PermissionError('只能打开预设的本机项目入口')
@@ -257,7 +282,7 @@ class DesktopApi:
                     draft=patch['soul_draft']
                     if draft is not None and (not isinstance(draft,dict) or set(draft)!={'text','revision'} or not isinstance(draft['text'],str) or len(draft['text'])>load()['role']['soul_max_chars'] or not isinstance(draft['revision'],str) or len(draft['revision'])>64):raise ValueError('人设草稿无效')
                 if 'draft' in patch and (not isinstance(patch['draft'],str) or len(patch['draft'])>load()['conversation']['max_input_chars']):raise ValueError('草稿长度无效')
-                if 'page' in patch and patch['page'] not in ('chat','overview','memory','diary','tasks','stickers','soul','abilities','settings','system','logs','agent'):raise ValueError('页面无效')
+                if 'page' in patch and patch['page'] not in ('chat','overview','memory','diary','tasks','stickers','soul','abilities','settings','system','logs','agent','groups'):raise ValueError('页面无效')
                 if 'channel' in patch and patch['channel'] not in ('all','qq','local'):raise ValueError('通道无效')
                 state.update(patch);path.parent.mkdir(parents=True,exist_ok=True)
                 temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,ensure_ascii=False),encoding='utf-8');temp.replace(path)

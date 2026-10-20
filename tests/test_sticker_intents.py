@@ -75,8 +75,8 @@ class StickerIntentTests(unittest.IsolatedAsyncioTestCase):
         self.service.save(row['media_id'],'撒娇','委屈','希望被安慰')
         local=await self.h.media_context({'media':[{'type':'sticker','media_id':row['media_id']}],'text':''})
         source=self.root/'qq.png';source.write_bytes(picture())
-        self.h.qq.action=AsyncMock(return_value={'file':str(source)})
-        qq=await self.h.media_context({'media':[{'type':'image','data':{'file':'onebot-file'}}],'text':''})
+        self.h.chat_media.fetch_qq_image=AsyncMock(return_value=picture())
+        qq=await self.h.media_context({'media':[{'type':'image','data':{'url':'https://gchat.qpic.cn/fixture.png'}}],'text':''})
         for context in (local,qq):self.assertIn('希望被安慰',context)
         self.h.senses.understand_sticker.assert_awaited_once()
         self.h.generate=AsyncMock(return_value='我在，抱抱你');self.h.send=AsyncMock()
@@ -84,6 +84,23 @@ class StickerIntentTests(unittest.IsolatedAsyncioTestCase):
         await self.h.turn({'media':[{'type':'sticker','media_id':row['media_id']}],'text':'','message_id':'local:test','channel':'local'},self.h.safety.generation)
         messages=self.h.generate.await_args.args[0]
         self.assertIn('希望被安慰',messages[-1]['content'])
+
+    async def test_native_voice_cannot_resolve_paths_or_invoke_missing_audio_api(self):
+        self.h.qq.action=AsyncMock()
+        self.h.senses.transcribe=AsyncMock()
+        self.h.senses.synthesize=AsyncMock()
+        self.h.generate=AsyncMock(return_value='请发文字给我')
+        self.h.send=AsyncMock()
+        self.h.role.prompt=Mock(return_value='测试角色')
+        self.cfg['voice']['tts_command']=['fixture-should-not-run']
+        row={'text':'','message_id':'voice:fixture','channel':'qq',
+             'media':[{'type':'record','data':{'file':str(self.root/'private.wav')}}]}
+        await self.h.turn(row,self.h.safety.generation)
+        self.h.qq.action.assert_not_awaited()
+        self.h.senses.transcribe.assert_not_awaited()
+        self.h.senses.synthesize.assert_not_awaited()
+        self.assertIn('不能猜内容',self.h.generate.await_args.args[0][-1]['content'])
+        self.assertIn('无法收听或发送 QQ 语音',self.h.send.await_args.args[0])
 
     async def test_http_media_validation_and_save_source(self):
         headers={'Host':'127.0.0.1:8765','X-Harness-Local':'1'}
@@ -158,10 +175,8 @@ class StickerIntentTests(unittest.IsolatedAsyncioTestCase):
         self.h.chat_media.fetch_qq_image.assert_awaited_once_with('https://gchat.qpic.cn/test.png')
 
     async def test_builtin_face_uses_verified_catalog_without_fake_vision(self):
-        folder=self.root/'.runtime/napcat/static/assets';folder.mkdir(parents=True)
-        (folder/'qface-test.js').write_text('JSON.parse(\'[{"QSid":"14","QDes":"/微笑"}]\')',encoding='utf-8')
         context=await self.h.media_context({'message_id':'builtin','text':'','media':[{'type':'face','data':{'id':'14'}}]})
-        self.assertIn('微笑',context);self.assertIn('非视觉观察',context)
+        self.assertIn('14',context);self.assertIn('非视觉观察',context)
         self.h.senses.understand_sticker.assert_not_awaited()
 
     async def test_qq_image_urls_and_private_dns_are_rejected(self):

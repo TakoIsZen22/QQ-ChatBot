@@ -45,7 +45,7 @@
   function confirmMaintenance(action,name) {
     if(!native()){toast('备份恢复请在桌面程序中操作。',true);return}if(busy)return;
     pending={action,name};$('#maintenance-title').textContent=action==='backup'?'创建完整快照':'恢复所选快照';
-    $('#maintenance-detail').textContent=action==='backup'?'将临时停止聊天，复制JSONL与媒体并生成SHA256清单。完成后重新启动聊天、保持暂停，请手动恢复只回复。QQ登录保持。':`恢复 ${name}。先校验SHA256，替换前保留现有data。完成后聊天保持停止，需检查QQ补课游标后再启动。当前配置不会被覆盖。`;
+    $('#maintenance-detail').textContent=action==='backup'?'将临时停止聊天，复制JSONL与媒体并生成SHA256清单。完成后重新启动聊天、保持暂停，请手动恢复只回复。QQ登录保持。':`恢复 ${name}。先校验SHA256，替换前保留现有data。完成后聊天保持停止，需检查去重和限流基线后再启动（QQ历史补拉尚未实现）。当前配置不会被覆盖。`;
     $('#restore-confirm-wrap').hidden=action!=='restore';$('#restore-confirm').value='';$('#maintenance-result').textContent='';$('#maintenance-run').disabled=false;$('#maintenance-run').textContent=action==='backup'?'确认创建备份':'确认恢复';$('#maintenance-dialog').showModal();
   }
   async function runMaintenance() {

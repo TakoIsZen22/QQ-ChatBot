@@ -46,15 +46,12 @@ class SetupTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):self.setup.install()
         self.api._command_lock.release()
 
-    def test_start_prepares_loopback_once_without_overwriting_existing_tokens(self):
+    def test_start_uses_only_native_backend_without_external_setup(self):
         merge(self.cfg,{'owner':{'qq_id':'10001'},'qq':{'bot_id':'10002','enabled':True},'model':{'main':'fixture'}})
-        folder=self.root/'.runtime/napcat/config';folder.mkdir(parents=True)
-        self.api._backend.start_all.return_value='fixture-start'
-        with patch.object(self.setup,'status',return_value={'components':{'qq':True,'napcat':True}}),patch('src.core.onboarding.subprocess.run') as run:
-            run.return_value.returncode=0;self.setup.start()
-            self.assertEqual(json.loads((folder/'webui.json').read_text()),{'host':'127.0.0.1','port':6099})
-            (folder/'webui.json').write_text('{"host":"127.0.0.1","token":"fixture-preserved"}')
-            self.setup.start();self.assertIn('fixture-preserved',(folder/'webui.json').read_text())
+        self.api._backend.start_qq.side_effect=RuntimeError('自写桥接尚在研发')
+        with patch.object(self.setup,'status',return_value={'components':{'qq':True,'bridge':True}}),patch('src.core.onboarding.subprocess.run') as run:
+            with self.assertRaisesRegex(RuntimeError,'研发'):self.setup.start()
+            run.assert_not_called()
         self.assertFalse(self.api._command_lock.locked());self.api._backend.request.assert_not_called()
 
     def test_portable_commands_use_private_runtime(self):

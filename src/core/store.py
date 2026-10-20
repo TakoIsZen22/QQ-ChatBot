@@ -50,3 +50,24 @@ class Store:
     def latest(self, stream, default=None):
         rows = self.read(stream)
         return rows[-1] if rows else default
+
+    def tail(self, stream, limit):
+        """只读取末尾有限条 JSONL，群窗口轮询不扫描全部历史。"""
+        p = self.path(stream)
+        if not p.exists():
+            return []
+        with self.lock, p.open('rb') as f:
+            f.seek(0, os.SEEK_END)
+            position, raw = f.tell(), b''
+            while position > 0 and raw.count(b'\n') <= limit:
+                size = min(position, 65536)
+                position -= size
+                f.seek(position)
+                raw = f.read(size) + raw
+            lines = raw.splitlines()
+            if position > 0:
+                lines = lines[1:]
+            try:
+                return [json.loads(line.decode('utf-8-sig')) for line in lines if line.strip()][-limit:]
+            except (ValueError, UnicodeError) as e:
+                raise ValueError(f'{p.name} JSONL 损坏，请停机修复或恢复备份') from e

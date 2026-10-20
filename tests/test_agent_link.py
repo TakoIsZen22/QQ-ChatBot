@@ -49,8 +49,14 @@ class LinkTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue((self.root/'received.txt').exists())
             self.safety.set('paused');self.link.pause()
             self.assertEqual(self.link.get(first['task_id'])['status'],'cancelled');self.assertEqual(self.link.get(second['task_id'])['status'],'cancelled')
-            await asyncio.sleep(.3);self.safety.set('reply_only');await asyncio.sleep(.1)
+            # Windows taskkill/pipe teardown can exceed 400ms; wait for completion,
+            # rather than cancel cleanup a second time while its process still lives.
+            deadline=asyncio.get_running_loop().time()+8
+            while self.link.current_task is not None and asyncio.get_running_loop().time()<deadline:
+                await asyncio.sleep(.02)
             self.assertIsNone(self.link.current_task)
+            self.safety.set('reply_only');await asyncio.sleep(.1)
+            self.assertEqual(self.link.get(second['task_id'])['status'],'cancelled')
         finally:worker.cancel();await asyncio.gather(worker,return_exceptions=True)
 
     async def test_bad_exit_and_output_limit_are_final_without_raw_stderr(self):

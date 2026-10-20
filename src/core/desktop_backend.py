@@ -59,22 +59,13 @@ class DesktopBackend:
     def start_qq(self):
         cfg=load()
         if not cfg['qq']['enabled']:return 'QQ桥接未启用，可先使用本机聊天'
-        port=urlsplit(cfg['qq']['ws_url']).port or 80
-        if self.port(port):return 'QQ桥接已经在运行'
-        runtime=ROOT/'.runtime/napcat'
-        if not (runtime/'NapCatWinBootMain.exe').is_file():raise RuntimeError('未安装NapCat，请按QQ接入指南准备')
-        # 凭据只在现有本机环境/原配置中；不采集控制台输出中的登录token。
-        harden=subprocess.run([python_command(),str(ROOT/'tools/harden-napcat.py')],cwd=ROOT,creationflags=HIDDEN,capture_output=True,timeout=10)
-        if harden.returncode:raise RuntimeError('NapCat本机地址配置失败')
-        env=os.environ.copy();env['DFY_DESKTOP_HIDDEN']='1'
-        self.spawn([python_command(),str(ROOT/'tools/launch-napcat.py')],env)
-        return 'QQ已后台启动；需要登录时请查看「QQ扫码」页'
+        from .native_host import NativeHost
+        return NativeHost(ROOT).start(cfg)['message']
 
     def start_all(self,managed=False):
         core=self.start_core(managed=managed)
-        try:qq=self.start_qq()
-        except Exception as e:qq='QQ未就绪：'+str(e)
-        return core+'；'+qq
+        # Desktop startup/recovery starts local chat only. QR login is a manual action.
+        return core+'；QQ 登录请在首次使用向导手动启动'
 
     def stop_core(self):
         ServiceIntent(ROOT).write(False,'manual_stop')
@@ -89,12 +80,8 @@ class DesktopBackend:
         raise RuntimeError('停止超时，请查看运行记录')
 
     def stop_qq(self):
-        # 仅停止本项目官方loader的进程树，不碰个人QQ、Magpie或其他Python进程。
-        env=os.environ.copy();env['DFY_EXPECTED_BOOTER']=str(ROOT/'.runtime/napcat/NapCatWinBootMain.exe')
-        command="$ErrorActionPreference='Stop'; $expected=$env:DFY_EXPECTED_BOOTER; Get-CimInstance Win32_Process -Filter \"Name = 'NapCatWinBootMain.exe'\" | Where-Object {$_.ExecutablePath -eq $expected} | ForEach-Object { & taskkill.exe /PID $_.ProcessId /T /F | Out-Null }"
-        result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',command],env=env,creationflags=HIDDEN,capture_output=True,timeout=15)
-        if result.returncode:raise RuntimeError('QQ后台进程停止失败')
-        return '本项目QQ桥接已停止'
+        from .native_host import NativeHost
+        return NativeHost(ROOT).control('stop')['message']
 
     def stop_all(self):
         core=self.stop_core();qq=self.stop_qq();return core+'；'+qq

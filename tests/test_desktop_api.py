@@ -29,6 +29,19 @@ class DesktopApiTests(unittest.TestCase):
         self.patches=[patch('src.core.desktop_api.ROOT',self.root),patch('src.core.desktop_api.load',return_value=self.cfg)]
         for p in self.patches:p.start();self.addCleanup(p.stop)
 
+    def test_qr_states_are_actionable_and_never_show_stale_login_image(self):
+        folder=self.root/'.runtime/qq-native';folder.mkdir(parents=True)
+        (folder/'qrcode.png').write_bytes(b'\x89PNG\r\n\x1a\nfixture')
+        for phase,expected in [('not_running','启动 QQ'),('qrcode_scanned','手机 QQ'),('qrcode_expired','刷新二维码'),('offline','停止 QQ'),('ready','无需扫码')]:
+            with self.subTest(phase=phase),patch('src.core.qq_native.status',return_value={'phase':phase}):
+                result=self.api.qr()
+                self.assertEqual(result['phase'],phase)
+                self.assertIn(expected,result['message'])
+                self.assertNotIn('data_url',result)
+        with patch('src.core.qq_native.status',return_value={'phase':'waiting_qrcode'}):
+            self.assertEqual(self.api.qr()['state'],'ready')
+        self.backend.request.assert_not_called()
+
     def test_bridge_rejects_arbitrary_urls_paths_and_actions(self):
         for path in ('http://example.com/status','//example.com','../config/local.json','data/../chat','stop','status?token=abc','memory?q=x&extra=y'):
             with self.subTest(path=path):
@@ -72,11 +85,12 @@ class DesktopApiTests(unittest.TestCase):
         summary=self.api._usage_today(self.cfg)
         self.assertEqual(summary['total_tokens'],1250);self.assertEqual(summary['samples'],250)
 
-    def test_qq_failure_keeps_local_chat_available(self):
+    def test_start_keeps_qq_login_manual_and_local_chat_available(self):
         backend=DesktopBackend()
-        with patch.object(backend,'start_core',return_value='聊天已启动') as core,patch.object(backend,'start_qq',side_effect=RuntimeError('缺少专用QQ')):
+        with patch.object(backend,'start_core',return_value='聊天已启动') as core,patch.object(backend,'start_qq',side_effect=RuntimeError('缺少专用QQ')) as qq:
             result=backend.start_all()
-            core.assert_called_once();self.assertIn('聊天已启动',result);self.assertIn('QQ未就绪',result)
+            core.assert_called_once();qq.assert_not_called()
+            self.assertIn('聊天已启动',result);self.assertIn('手动启动',result)
 
     def test_http_error_keeps_actionable_server_message(self):
         error=urllib.error.HTTPError('http://127.0.0.1:8765/api/diary',400,'Bad Request',{},io.BytesIO(json.dumps({'error':'今天日记已经三条'},ensure_ascii=False).encode('utf-8')))

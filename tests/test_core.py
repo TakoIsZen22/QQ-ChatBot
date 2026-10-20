@@ -90,14 +90,14 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(.01);start=time.monotonic();self.safety.set('paused')
         self.assertFalse(await task);self.assertLess(time.monotonic()-start,1)
 
-    async def test_onebot_owner_only_and_structured_text(self):
+    async def test_native_owner_only_and_structured_text(self):
         received=[];sent=[]
         async def receive(e):received.append(e)
         async def handler(r):
             body=await r.json();sent.append((r.match_info['action'],body));return web.json_response({'status':'ok','retcode':0,'data':{'message_id':1}})
         app=web.Application();app.router.add_post('/{action}',handler)
         async with TestServer(app) as srv,aiohttp.ClientSession() as session:
-            qcfg=copy.deepcopy(self.cfg['qq']);qcfg['http_url']=str(srv.make_url('')).rstrip('/')
+            qcfg=copy.deepcopy(self.cfg['qq']);qcfg['native_port']=srv.port
             qq=QQBridge(qcfg,'123',session,self.store,lambda *a,**k:None,receive,self.safety)
             await qq.ingest({'post_type':'request','request_type':'friend'})
             await qq.ingest({'post_type':'message','message_type':'group','user_id':123,'message_id':1,'message':'hi'})

@@ -24,6 +24,7 @@ from ..modules.growth import Growth
 from ..modules.model import Model
 from ..modules.conversation import Conversation
 from ..modules.qq_bridge import QQBridge
+from ..modules.group_monitor import GroupMonitor
 from ..modules.awakening import Awakening
 from ..modules.music import Music
 from ..modules.devices import Devices
@@ -37,7 +38,7 @@ class Harness:
         self.root=ROOT
         self.cfg, self.session = cfg,session
         self.store = Store(ROOT/cfg['paths']['data'])
-        self.log = Log(Store(ROOT/cfg['paths']['logs']), (cfg['model']['key_env'],cfg['qq']['token_env']))
+        self.log = Log(Store(ROOT/cfg['paths']['logs']), (cfg['model']['key_env'],))
         self.safety = Safety(cfg['safety'],self.store,self.log)
         self.zone = ZoneInfo(cfg['awakening']['timezone'])
         self.person = 'owner'  # QQ 与本机 UI 同一人；换 QQ 账号须创建新的数据目录。
@@ -62,7 +63,8 @@ class Harness:
         self.chat_media = ChatMedia(cfg['qq'],self.store,ROOT,self.sticker_intents)
         self.awakening = Awakening(cfg['awakening'],self)
         self.tools = ToolDispatcher(self)
-        self.qq = QQBridge(cfg['qq'],cfg['owner']['qq_id'],session,self.store,self.log,self.receive,self.safety)
+        self.group_monitor = GroupMonitor(cfg['group_monitor'],self.store,self.log)
+        self.qq = QQBridge(cfg['qq'],cfg['owner']['qq_id'],session,self.store,self.log,self.receive,self.safety,self.group_monitor)
         self.queue = asyncio.Queue(maxsize=cfg['conversation']['queue_size'])
         self.seen = {r['message_id'] for r in self.store.read('inbox')}
         self.last_received = max([datetime.fromisoformat(r['ts']).timestamp() for r in self.store.read('inbox')] or [time.time()])
@@ -188,27 +190,8 @@ class Harness:
                     descriptions.append(context);self.chat_media.remember(row,index,observed,context)
                     continue
                 if typ!='record':raise ValueError('不支持的聊天媒体类型')
-                # 语音仅接受NapCat返回的本机文件，不下载外部URL、不上传转写。
-                data = item.get('data',{})
-                result = await self.qq.action('get_record', {'file':data.get('file',''),'out_format':'wav'})
-                from pathlib import Path
-                from urllib.parse import urlsplit,unquote
-                import shutil
-                raw_path = result.get('file','')
-                path = Path(unquote(urlsplit(raw_path).path.lstrip('/'))) if raw_path.startswith('file:///') else Path(raw_path)
-                if not path.is_absolute() or not path.is_file():
-                    raise ValueError('NapCat 未返回可读取的本机媒体文件')
-                if path.stat().st_size > self.cfg['voice']['max_audio_bytes']:
-                    raise ValueError('媒体文件过大')
-                dest = self.store.root/'media'/(uuid.uuid4().hex+('.wav' if typ=='record' else path.suffix.lower()))
-                dest.parent.mkdir(parents=True,exist_ok=True)
-                await asyncio.to_thread(shutil.copyfile,path,dest)
-                transcript=await self.senses.transcribe(dest)
-                if not transcript.strip():raise ValueError('本机 whisper 未识别到文字')
-                if transcript.strip().strip('。！？!?,，') in self.cfg['safety']['stop_words']:
-                    self.set_safety('paused')
-                    raise asyncio.CancelledError()
-                descriptions.append('[本机语音转写] '+transcript)
+                # Native transport has no audio file API. Never resolve a chat-provided path.
+                raise ValueError('自写 QQ 桥接尚未支持语音文件；请先使用文字，本机转写工具仍可单独使用')
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -287,33 +270,16 @@ class Harness:
                 if media:
                     messages[-1]['content'] += '\n'+media
                 text=await self.generate(messages,gen)
-                # 语音回语音仅本机 TTS 可用时；失败诚实降级，不上传语音。
+                # Native QQ currently supports text sends only.
                 is_voice=any(m.get('type')=='record' for m in row.get('media',[]))
-                if is_voice and self.cfg['voice']['tts_command'] and not self.awakening.quiet() and row['channel']=='qq':
-                    try:
-                        path=await self.senses.synthesize(text)
-                        if self.safety.allowed(generation=gen) and await self.safety.acquire('private:'+self.qq.owner,gen):
-                            await self.qq.action('send_private_msg',{'user_id':int(self.qq.owner),'message':[{'type':'record','data':{'file':path.as_uri()}}]})
-                            self.store.append('chat',person=self.person,role='assistant',content=text,channel='qq',voice=True)
-                            self.log('INFO','she_spoke',channel='qq',voice=True,text=text)
-                    except Exception as e:
-                        self.log('WARN','voice_reply_fallback',raw=str(e))
-                        await self.send('语音输出暂时不可用，我先打字。\n\n'+text,row['channel'],gen)
-                else:
-                    if is_voice and not self.cfg['voice']['tts_command'] and not self.awakening.quiet():
-                        text='语音输出还没配置，我先用文字回你。\n\n'+text
-                    await self.send(text,row['channel'],gen)
-                if self.sticker_pending and not self.serious_turn and self.safety.allowed(generation=gen):
+                if is_voice and row['channel']=='qq':
+                    text='目前无法收听或发送 QQ 语音，请发文字给我。\n\n'+text
+                await self.send(text,row['channel'],gen)
+                if self.sticker_pending and row['channel']!='qq' and not self.serious_turn and self.safety.allowed(generation=gen):
                     sticker=self.stickers.reserve(self.sticker_pending[0])
                     if await self.safety.delay(self.cfg['conversation']['min_delay_seconds'],gen):
-                        delivered=row['channel']!='qq'
-                        if row['channel']=='qq' and await self.safety.acquire('private:'+self.qq.owner,gen):
-                            from pathlib import Path
-                            await self.qq.action('send_private_msg',{'user_id':int(self.qq.owner),'message':[{'type':'image','data':{'file':Path(sticker['path']).as_uri()}}]})
-                            delivered=True
-                        if delivered:
-                            self.store.append('chat',person=self.person,role='assistant',content='[表情包] '+sticker['description'],channel=row['channel'])
-                            self.log('INFO','she_spoke',channel=row['channel'],sticker_id=sticker['id'])
+                        self.store.append('chat',person=self.person,role='assistant',content='[表情包] '+sticker['description'],channel=row['channel'])
+                        self.log('INFO','she_spoke',channel=row['channel'],sticker_id=sticker['id'])
                 self.impression.update(self.person,history)
             finally:
                 self.current_message=None

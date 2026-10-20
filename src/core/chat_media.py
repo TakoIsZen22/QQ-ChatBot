@@ -1,4 +1,4 @@
-"""聊天图片入口：本机附件、OneBot本机缓存与精确允许的QQ图片CDN。"""
+"""聊天图片入口：本机上传与精确允许的 QQ 图片 CDN。"""
 import asyncio
 import base64
 import ipaddress
@@ -30,20 +30,12 @@ class ChatMedia:
 
     def local_bytes(self,raw_path):
         path=Path(unquote(urlsplit(raw_path).path.lstrip('/'))) if raw_path.startswith('file:///') else Path(raw_path)
-        if not path.is_absolute() or not path.is_file():raise ValueError('NapCat未返回本机图片文件')
+        if not path.is_absolute() or not path.is_file():raise ValueError('未提供有效的本机图片文件')
         if path.stat().st_size>self.intents.cfg['max_image_bytes']:raise ValueError('聊天图片过大')
         return path.read_bytes()
 
     async def qq_bytes(self,item,qq):
         data=item.get('data',{});url=data.get('url','')
-        if data.get('file'):
-            try:
-                result=await qq.action('get_image',{'file':data['file']}) or {}
-                raw_path=result.get('file','')
-                if raw_path:return self.local_bytes(raw_path)
-                url=result.get('url') or url
-            except (ValueError,OSError,RuntimeError,aiohttp.ClientError,asyncio.TimeoutError):
-                if not url:raise
         if not url:
             emoji=str(data.get('emoji_id',''))
             if re.fullmatch(r'[a-fA-F0-9]{32}',emoji):
@@ -76,15 +68,10 @@ class ChatMedia:
                 return b''.join(chunks)
 
     def face_context(self,data):
-        # QQ内置表情没有像素时，仅使用安装包自带的编号名称，不伪称视觉识别。
+        # No third-party asset catalogue is loaded or evaluated.
         face_id=str(data.get('id',''))
-        folder=self.root/'.runtime/napcat/static/assets'
-        for path in folder.glob('qface-*.js'):
-            text=path.read_text(encoding='utf-8')
-            names=dict(re.findall(r'"QSid":"(\d+)","QDes":"([^"\\]+)"',text))
-            if face_id in names:
-                return f'[QQ内置表情：{names[face_id].lstrip("/")}；来自本机QQ表情名称表，非视觉观察。结合语境理解，不认定真实情绪。]'
-        return '[QQ内置表情：没有可验证的图片或名称，请说明无法辨认，不猜内容。]'
+        number=face_id if re.fullmatch(r'[0-9]{1,6}',face_id) else '未知'
+        return f'[QQ内置表情编号 {number}：非视觉观察；没有可验证的图片或名称，请说明无法辨认，不猜内容。]'
 
     def remember(self,row,index,observed,context):
         if row.get('message_id'):

@@ -1,15 +1,13 @@
 """首次使用向导：独立 QQ 组件、配置和扫码前准备；不会解除暂停。"""
-import json
-import os
 import shutil
 import subprocess
 import tempfile
 import threading
 from pathlib import Path
 from .config import ROOT,load,save_local,merge,validate
-from .runtime_downloads import catalog,download,safe_zip
-from .runtime_paths import python_command,portable
-from .system_qq import detect,find_usable
+from .runtime_downloads import catalog,download
+from .runtime_paths import portable
+from .qq_native import diagnose
 
 HIDDEN=getattr(subprocess,'CREATE_NO_WINDOW',0)
 
@@ -22,13 +20,14 @@ class Onboarding:
         with self._lock:self._job.update(patch)
 
     def status(self):
-        cfg=load();qq=Path(cfg['qq']['client_path']) if cfg['qq']['client_path'] else ROOT/'.runtime/qq-client/QQ.exe'
+        cfg=load();qq=ROOT/'.runtime/qq-client/QQ.exe'
         with self._lock:job=dict(self._job)
         return {'portable':portable(),'configured':bool(cfg['owner']['qq_id'] and cfg['qq']['bot_id'] and cfg['model']['main']),
             'accounts':{'owner_name':cfg['owner']['name'],'owner_id':cfg['owner']['qq_id'],'bot_id':cfg['qq']['bot_id']},
             'model':{k:cfg['model'][k] for k in ('provider','base_url','key_env','main','auxiliary')},
-            'components':{'napcat':(ROOT/'.runtime/napcat/NapCatWinBootMain.exe').is_file(),'qq':qq.is_file()},
-            'qq_client':{'path':str(qq) if qq.is_file() else '','reused':bool(cfg['qq']['client_path'] and not str(cfg['qq']['client_path']).startswith(str(ROOT/'.runtime')))},
+            'components':{'bridge':(ROOT/'src/qq_native/entry.js').is_file(),'qq':qq.is_file()},
+            'bridge':diagnose(ROOT,cfg,probe=False),
+            'qq_client':{'path':str(qq) if qq.is_file() else '','reused':False},
             'job':job}
 
     def save(self,body):
@@ -51,7 +50,7 @@ class Onboarding:
             save_local(patch)
             self.api._set_desired(True)
             self.api._backend.start_core()
-            return {'saved':True,'message':'账号与模型已保存。完成组件准备后启动扫码，最后手动开启只回复。'}
+            return {'saved':True,'message':'账号与模型已保存。准备组件后可扫码；聊天安全模式保持不变。'}
         finally:self.api._command_lock.release()
 
     def install(self):
@@ -61,7 +60,7 @@ class Onboarding:
         return {'started':True}
 
     def _sevenzip(self,cfg):
-        candidates=[ROOT/'_tools/7zip/7z.exe',ROOT/'.runtime/napcat-installer/7z.exe']
+        candidates=[ROOT/'_tools/7zip/7z.exe']
         system=shutil.which('7z')
         if system:candidates.append(Path(system))
         for file in candidates:
@@ -83,51 +82,31 @@ class Onboarding:
             if shutil.disk_usage(ROOT).free<3*1024**3:raise ValueError('请至少预留 3 GB 可用空间')
             # A private staging directory is removed on exit, existing installations never overwritten.
             with tempfile.TemporaryDirectory(prefix='qq-setup-',dir=runtime) as temp:
-                stage=Path(temp);nap=runtime/'napcat';qq=runtime/'qq-client';installed=self.status()['components']
-                if not installed['napcat']:
-                    if nap.exists() and any(nap.iterdir()):raise ValueError('NapCat 目录已有不完整文件，请保留后交由维护者修复；向导不会覆盖登录数据')
-                    self.update(stage='napcat',message='正在下载 NapCat（官方 GitHub）…',received=0,total=0)
-                    archive=download(cfg['napcat'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
-                    self.update(stage='extract',message='正在校验和解压 NapCat…')
-                    safe_zip(archive,stage/'napcat',cfg['limits'])
-                    if not all((stage/'napcat'/n).is_file() for n in ('NapCatWinBootMain.exe','NapCatWinBootHook.dll','loadNapCat.js','napcat.mjs')):raise ValueError('NapCat 包结构与适配器不匹配')
-                    if nap.exists():nap.rmdir()
-                    (stage/'napcat').rename(nap)
+                stage=Path(temp);qq=runtime/'qq-client';installed=self.status()['components']
                 if not installed['qq']:
-                    # 本机已装 QQ 就直接复用，省掉一次几百 MB 的下载。
-                    system=find_usable(ROOT)
-                    if system:
-                        self.update(stage='qq',message='检测到本机已安装 QQ，正在复用…',received=0,total=0)
-                        save_local({'qq':{'client_path':system['path']}})
-                    else:
-                        # 有 QQ 但版本过旧时说明原因，别让用户白扫一次码才发现被拒。
-                        stale=next((i for i in detect() if i['too_old']),None)
-                        if stale:
-                            self.update(stage='qq',message=f"检测到本机 QQ（{stale['version']}）版本过旧，腾讯服务器会拒绝登录，将改用独立客户端…",received=0,total=0)
-                        if qq.exists() and any(qq.iterdir()):raise ValueError('独立 QQ 目录已有不完整文件，向导不会覆盖，请交由维护者检查')
-                        if not stale:
-                            self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
-                        archive=download(cfg['qq'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
-                        seven=self._sevenzip(cfg)
-                        self.update(stage='extract',message='正在解压独立机器人 QQ，不修改系统 QQ…')
-                        dest=stage/'qq-client';dest.mkdir()
-                        subprocess.run([str(seven),'x',str(archive),'-y','-o'+str(dest)],creationflags=HIDDEN,check=True,timeout=cfg['limits']['extract_timeout_seconds'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-                        binaries=list(dest.rglob('QQ.exe'))
-                        if len(binaries)!=1 or not binaries[0].parent.is_relative_to(dest):raise ValueError('QQ 安装包结构已变化，请由维护者更新适配')
-                        client=binaries[0].parent
-                        if not (client/'resources/app/package.json').is_file() and not (client/'versions/config.json').is_file():raise ValueError('QQ 版本元数据缺失')
-                        if qq.exists():qq.rmdir()
-                        client.rename(qq)
-                        save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
+                    if qq.exists() and any(qq.iterdir()):raise ValueError('独立 QQ 目录已有不完整文件，向导不会覆盖，请交由维护者检查')
+                    self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
+                    archive=download(cfg['qq'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
+                    seven=self._sevenzip(cfg)
+                    self.update(stage='extract',message='正在解压独立 QQ；自写桥接仍待实连验收…')
+                    dest=stage/'qq-client';dest.mkdir()
+                    subprocess.run([str(seven),'x',str(archive),'-y','-o'+str(dest)],creationflags=HIDDEN,check=True,timeout=cfg['limits']['extract_timeout_seconds'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                    binaries=list(dest.rglob('QQ.exe'))
+                    if len(binaries)!=1 or not binaries[0].parent.is_relative_to(dest):raise ValueError('QQ 安装包结构已变化，请由维护者更新适配')
+                    client=binaries[0].parent
+                    if not (client/'resources/app/package.json').is_file() and not (client/'versions/config.json').is_file():raise ValueError('QQ 版本元数据缺失')
+                    if qq.exists():qq.rmdir()
+                    client.rename(qq)
+                    save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
                 elif not load()['qq']['client_path'] and (qq/'QQ.exe').is_file():save_local({'qq':{'client_path':str(qq/'QQ.exe')}})
-            self.update(running=False,stage='done',message='组件已准备好。保存账号后即可启动扫码。',received=0,total=0)
+            self.update(running=False,stage='done',message='官方 QQ 文件已准备。点击扫码接入并在手机确认；不会自动解除暂停。',received=0,total=0)
         except Exception as e:
             # No upstream response/body or credentials are captured in setup diagnostics.
             message=str(e) if isinstance(e,ValueError) else '下载或解压失败（'+type(e).__name__+'）。检查网络后重试；已安装的组件与登录态会保留。'
             self.update(running=False,stage='error',message=message)
             from .log import Log
             from .store import Store
-            c=load();Log(Store(ROOT/'.runtime/desktop-logs'),(c['model']['key_env'],c['qq']['token_env']))('ERROR','setup_failed',raw=message)
+            c=load();Log(Store(ROOT/'.runtime/desktop-logs'),(c['model']['key_env'],))('ERROR','setup_failed',raw=message)
         finally:self.api._command_lock.release()
 
     def start(self):
@@ -136,12 +115,16 @@ class Onboarding:
         if not all(self.status()['components'].values()):raise ValueError('请先完成 QQ 组件准备')
         if not self.api._command_lock.acquire(blocking=False):raise RuntimeError('正在处理其他服务操作，请稍候')
         try:
-            folder=ROOT/'.runtime/napcat/config';folder.mkdir(parents=True,exist_ok=True)
-            web=folder/'webui.json'
-            if not web.exists():web.write_text(json.dumps({'host':'127.0.0.1','port':6099}),encoding='utf-8')
-            # NapCat itself fills its auth defaults; harness never generates/reads WebUI tokens.
-            result=subprocess.run([python_command(),str(ROOT/'tools/setup-napcat.py')],creationflags=HIDDEN,capture_output=True,timeout=15)
-            if result.returncode:raise ValueError('OneBot 配置准备失败，请检查账号与本机端口设置')
-            self.api._set_desired(True)
-            return {'message':self.api._backend.start_all()}
+            return {'message':self.api._backend.start_qq()}
+        finally:self.api._command_lock.release()
+
+    def refresh_qr(self):
+        from .native_host import NativeHost
+        if not self.api._command_lock.acquire(blocking=False):raise RuntimeError('正在处理其他服务操作，请稍候')
+        try:return NativeHost(ROOT).control('refresh_qr')
+        finally:self.api._command_lock.release()
+
+    def stop(self):
+        if not self.api._command_lock.acquire(blocking=False):raise RuntimeError('正在处理其他服务操作，请稍候')
+        try:return {'message':self.api._backend.stop_qq()}
         finally:self.api._command_lock.release()

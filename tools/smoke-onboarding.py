@@ -60,7 +60,7 @@ class Backend:
 
 
 class Api(DesktopApi):
-    def __init__(self):super().__init__(Backend());self.state={};self.installed=False;self.saved=False;self.started=False
+    def __init__(self):super().__init__(Backend());self.state={};self.installed=False;self.saved=False;self.started=False;self.refreshed=False;self.stopped=False;self.qr_phase="not_running"
     def ui_state(self,patch=None):
         if patch:self.state.update(patch)
         return self.state
@@ -69,16 +69,18 @@ class Api(DesktopApi):
     def maintenance(self,*args):return []
     def events(self):return []
     def read_data(self,stream):return []
-    def qr(self):return {'state':'missing'}
+    def qr(self):return {'state':'expired' if self.qr_phase=='qrcode_expired' else 'unavailable','phase':self.qr_phase,'message':'等待扫码（协议夹具）'}
     def onboarding(self,action='status',body=None):
         if action=='save':
             if body['owner_id']==body['bot_id']:raise ValueError('主人和机器人必须不同')
             candidate=copy.deepcopy(cfg);merge(candidate,{'owner':{'name':body['owner_name'],'qq_id':body['owner_id']},'qq':{'enabled':True,'bot_id':body['bot_id']},'model':body['model']});validate(candidate);cfg.update(candidate)
             self.saved=True;(ROOT/run/'saved.json').write_text(json.dumps(body),encoding='utf-8');return {'message':'已保存（协议夹具）'}
         if action=='install':self.installed=True;return {'started':True}
-        if action=='start':self.started=True;return {'message':'等待扫码（协议夹具）'}
+        if action=='start':self.started=True;self.qr_phase='waiting_qrcode';return {'message':'等待扫码（协议夹具）'}
+        if action=='refresh_qr':self.refreshed=True;self.qr_phase='waiting_qrcode';return {'message':'已刷新（协议夹具）'}
+        if action=='stop':self.stopped=True;self.qr_phase='not_running';return {'message':'已停止（协议夹具）'}
         return {'configured':self.saved,'portable':False,'accounts':{'owner_name':'你','owner_id':'','bot_id':''},'model':cfg['model'],
-            'components':{'napcat':self.installed,'qq':self.installed},'job':{'running':False,'stage':'done' if self.installed else 'idle','message':'组件已准备好' if self.installed else '等待准备','received':0,'total':0}}
+            'bridge':{'experimental':True,'launch_available':self.installed and self.saved,'session':{'online':False}},'components':{'bridge':True,'qq':self.installed},'job':{'running':False,'stage':'done' if self.installed else 'idle','message':'组件已准备好' if self.installed else '等待准备','received':0,'total':0}}
 
 
 api=Api();window=webview.create_window('QQ ChatBot 首次向导验收',url=DesktopAssets(),js_api=api,width=1280,height=820,hidden=True);result={'ok':False}
@@ -94,6 +96,13 @@ def until(expression):
 def check():
     try:
         window.events.loaded.wait(20);until("!!window.DFY?.state.cfg && document.querySelector('#onboarding-dialog')?.open")
+        from src.core.edition import capabilities
+        expected=capabilities()['providers']
+        for selector in ('#setup-provider','#model-provider'):
+            actual=window.evaluate_js('Array.from(document.querySelector('+json.dumps(selector)+').options,o=>o.value)')
+            assert set(actual)==set(expected),(selector,actual,expected)
+        assert window.evaluate_js('!!document.querySelector(\'[data-guide="magpie"]\')')==('magpie' in expected)
+        result['edition']=capabilities()['version'];result['provider_options']=expected
         assert not api.saved and not api.started and not api.installed
         window.evaluate_js("document.querySelector('#setup-tutorial').click()")
         until("document.querySelector('#guide-dialog').open && document.querySelector('#guide-title').textContent.includes('新手')")
@@ -110,8 +119,19 @@ def check():
         assert json.loads((ROOT/run/'saved.json').read_text(encoding='utf-8'))['model']['main']=='setup-text'
         window.evaluate_js("document.querySelector('#setup-download').click()")
         until("document.querySelector('#setup-download-state').textContent.includes('已就绪')")
+        until("!document.querySelector('#setup-start').disabled")
+        assert not api.started
         window.evaluate_js("document.querySelector('#setup-start').click()")
         until("document.querySelector('#setup-result').textContent.includes('等待扫码')")
+        assert api.started
+        until("!document.querySelector('#setup-start').disabled")
+        window.evaluate_js("document.querySelector('#setup-refresh-qr').click()")
+        until("document.querySelector('#setup-result').textContent.includes('已刷新')")
+        assert api.refreshed
+        until("!document.querySelector('#setup-start').disabled")
+        window.evaluate_js("document.querySelector('#setup-stop-qq').click()")
+        until("document.querySelector('#setup-result').textContent.includes('已停止')")
+        assert api.stopped
         assert window.evaluate_js("document.querySelector('#setup-finish').disabled")
         from System import Action,Func,Object
         from System.IO import FileStream,FileMode
@@ -131,7 +151,24 @@ def check():
         time.sleep(.3);assert not window.evaluate_js("document.querySelector('#onboarding-dialog').scrollWidth>document.querySelector('#onboarding-dialog').clientWidth+2")
         window.evaluate_js("document.querySelector('#setup-close').click();window.DFY.navigate('system');document.querySelector('#program-onboarding').click()")
         until("document.querySelector('#onboarding-dialog').open")
-        result.update(ok=True,first_run_auto_open=True,guide_offline=True,model_probe_without_save=True,account_save=True,download_and_start_buttons=True,offline_cannot_resume=True,themes_and_narrow=True,reopen_entry=True)
+        window.evaluate_js("document.querySelector('#setup-close').click();document.querySelector('#bridge-chip').click()")
+        until("document.querySelector('#qr-dialog').open && !document.querySelector('#qr-start').disabled")
+        assert window.evaluate_js("document.querySelector('#refresh-qr').disabled && document.querySelector('#qr-empty').textContent.includes('启动 QQ')")
+        api.started=False;api.refreshed=False;api.stopped=False
+        window.evaluate_js("document.querySelector('#qr-start').click()")
+        until("document.querySelector('#qr-start').disabled && !document.querySelector('#refresh-qr').disabled")
+        assert api.started
+        api.qr_phase='qrcode_expired'
+        window.evaluate_js("document.querySelector('#refresh-qr').click()")
+        until("!document.querySelector('#refresh-qr').disabled")
+        assert api.refreshed
+        window.evaluate_js("document.querySelector('#qr-stop').click()")
+        until("!document.querySelector('#qr-start').disabled")
+        assert api.stopped
+        window.evaluate_js("document.querySelector('#qr-settings').click()")
+        until("document.querySelector('#onboarding-dialog').open && !document.querySelector('#qr-dialog').open")
+        result['quick_qr_start_refresh_stop_settings']=True
+        result.update(ok=True,first_run_auto_open=True,guide_offline=True,model_probe_without_save=True,account_save=True,download_and_explicit_qr_start=True,qr_refresh_and_stop=True,offline_cannot_resume=True,themes_and_narrow=True,reopen_entry=True)
     except Exception as e:result['error']=str(e)
     finally:
         window.evaluate_js("document.querySelector('#onboarding-dialog')?.close()");time.sleep(.25);window.destroy()

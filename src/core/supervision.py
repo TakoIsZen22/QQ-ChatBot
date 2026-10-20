@@ -22,8 +22,7 @@ def collect(cfg=None):
     checks = {'harness': port(cfg['server']['port']), 'model_api': probe_port(cfg['model'])}
     if cfg['model']['provider']=='magpie':checks['magpie']=checks['model_api']
     if cfg['qq']['enabled']:
-        checks.update(onebot_http=port(urlsplit(cfg['qq']['http_url']).port or 80),
-                      onebot_ws=port(urlsplit(cfg['qq']['ws_url']).port or 80))
+        checks['qq_native']=port(cfg['qq']['native_port'])
     status = {}
     if checks['harness']:
         try:

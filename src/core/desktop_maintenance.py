@@ -53,6 +53,7 @@ class DesktopMaintenance:
 
     def diagnostics(self,backend):
         from .model_endpoint import probe_port
+        from .qq_native import diagnose
         cfg=load();data=self.root/cfg['paths']['data']
         report={'version':VERSION,'time':datetime.now(timezone.utc).isoformat(),'platform':platform.platform(),
             'desktop_python':platform.python_version(),'ports':{'core':backend.port(cfg['server']['port']),'model_api':probe_port(cfg['model'])},
@@ -61,7 +62,8 @@ class DesktopMaintenance:
             'dependencies':{'core_python':Path(python_command(self.root)).is_file(),
                 'desktop_python':portable(self.root) or (self.root/'.venv-desktop/Scripts/python.exe').is_file(),
                 'qq_client':bool(cfg['qq']['client_path'] and Path(cfg['qq']['client_path']).is_file())},
-            'backup_count':len(self.backups()),'note':'只读诊断不调用模型；不包含聊天、记忆正文、环境变量值或登录凭据。'}
+            'backup_count':len(self.backups()),'qq_bridge':diagnose(self.root,cfg),
+            'note':'只读诊断不调用模型；不包含聊天、记忆正文、环境变量值或登录凭据。'}
         try:
             status=backend.request('status')
             report['status']={k:status[k] for k in ('name','time','mode','qq_enabled','qq_connected','qq_online','last_spoke','memory_count','queue','busy') if k in status}

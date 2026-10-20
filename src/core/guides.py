@@ -10,6 +10,9 @@ GUIDES={'agent':('CLI 与桌面 Agent 工作转交教程','docs/AGENT_WORK.md',N
 
 def read_guide(root,name):
     if not isinstance(name,str) or name not in GUIDES:raise ValueError('未知帮助文档')
+    if name=='magpie':
+        from .edition import require_provider
+        require_provider('magpie')
     root=Path(root).resolve();title,document,illustration=GUIDES[name]
     def read(relative):
         path=(root/relative).resolve()

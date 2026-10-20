@@ -1,4 +1,4 @@
-"""探测本机已安装的 QQ 客户端，供向导优先复用而不必下载独立副本。
+"""探测本机已安装的 QQ 客户端，仅供只读诊断（当前向导不复用系统客户端）。
 
 只读：不安装、不启动、不修改系统 QQ 与其登录态。
 """
@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-# NapCat 官方 launcher 就是从这些注册表键找系统 QQ，保持一致。
+# Windows 标准卸载项，仅用于只读识别。
 REGISTRY_KEYS = (
     (r'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\QQ', 'UninstallString'),
     (r'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\QQ', 'UninstallString'),
@@ -152,7 +152,7 @@ def detect():
     """返回可复用的系统 QQ 列表。
 
     每项含 path（QQ.exe）、dir、version、build_id、package_json、usable、too_old。
-    usable 表示该目录具备 NapCat 注入所需的配套元数据。
+    usable 表示该目录具备 版本诊断所需的配套元数据。
     too_old 表示版本低于腾讯接受的门槛，登录时会被 error 45 拒绝。
     """
     results = []

@@ -59,6 +59,41 @@ def build(h,shutdown):
     async def supervision(r):
         from ..core.supervision import collect
         return web.json_response(await asyncio.to_thread(collect,h.cfg))
+    async def group_monitor(r):
+        if r.method == 'GET':
+            if r.query:
+                if set(r.query) != {'group_id'} or len(r.query.getall('group_id')) != 1:
+                    raise ValueError('群监听查询参数无效')
+                return web.json_response({'messages': h.group_monitor.rows(r.query['group_id'])})
+            return web.json_response(dict(h.group_monitor.snapshot(), qq_enabled=h.cfg['qq']['enabled'],
+                                         connected=h.qq.connected, online=h.qq.online))
+        import copy
+        from ..core.config import validate
+        from ..modules.group_monitor import group_id
+        a = await r.json()
+        if not isinstance(a, dict):raise ValueError('群监听参数无效')
+        action = a.pop('action', None)
+        ident = group_id(a.get('group_id'))
+        candidate = copy.deepcopy(h.cfg)
+        groups = candidate['group_monitor']['groups']
+        current = next((g for g in groups if g['group_id'] == ident), None)
+        if action == 'add' and set(a) == {'group_id', 'name'}:
+            if current:raise ValueError('该群已添加，请切换到对应窗口')
+            groups.append(dict(a, enabled=True))
+        elif action == 'update' and set(a) == {'group_id', 'name', 'enabled'}:
+            if not current:raise ValueError('该群未添加监听')
+            current.update(a)
+        elif action == 'remove' and set(a) == {'group_id'}:
+            if not current:raise ValueError('该群未添加监听')
+            groups.remove(current)
+        else:raise ValueError('群监听只允许添加、修改或移除')
+        validate(candidate)
+        save_local({'group_monitor': candidate['group_monitor']})
+        h.cfg['group_monitor'] = candidate['group_monitor']
+        h.group_monitor.cfg = h.cfg['group_monitor']
+        if action == 'remove':h.group_monitor.seen.pop(ident, None)
+        h.log('INFO', 'group_monitor_changed', action=action, group_id=ident)
+        return web.json_response({'saved': True, 'restart_required': False})
     async def agent_work(r):
         if r.method=='GET':return web.json_response(h.agent_link.snapshot())
         a=await r.json()
@@ -189,6 +224,11 @@ def build(h,shutdown):
     async def config(r):
         if r.method=='GET':return web.json_response(load())
         patch=await r.json()
+        if 'group_monitor' in patch:
+            import copy
+            from ..core.config import merge
+            candidate=copy.deepcopy(h.cfg);merge(candidate,patch)
+            if candidate['group_monitor']!=h.cfg['group_monitor']:raise ValueError('请在“群聊监听”页管理监听群；其他限制请停机后修改配置')
         if 'agent_link' in patch:
             import copy
             from ..core.config import merge
@@ -197,6 +237,8 @@ def build(h,shutdown):
         save_local(patch)
         return web.json_response({'saved':True,'restart_required':True})
     app.router.add_get('/',index)
+    app.router.add_get('/api/group-monitor',group_monitor)
+    app.router.add_post('/api/group-monitor',group_monitor)
     app.router.add_get('/api/agent-work',agent_work)
     app.router.add_post('/api/agent-work',agent_work)
     app.router.add_post('/api/agent-binding',agent_binding)

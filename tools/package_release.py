@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {'README.md','HANDOFF.md','AGENTS.md','LICENSE','NOTICE.md','CHANGELOG.md',
               '架构文档.md','QQ ChatBot.vbs','.gitignore'}
-TEXT_SUFFIXES = {'.py','.md','.json','.js','.html','.css','.ps1','.bat','.vbs','.txt','.yml','.yaml','.cs'}
-TREE_SUFFIXES = {'.py','.md','.json','.js','.html','.css','.ps1','.bat','.vbs','.txt'}
+TEXT_SUFFIXES = {'.py','.md','.json','.js','.html','.css','.ps1','.bat','.vbs','.txt','.yml','.yaml','.cs','.cpp','.h'}
+TREE_SUFFIXES = {'.py','.md','.json','.js','.html','.css','.ps1','.bat','.vbs','.txt','.cpp','.h'}
 PUBLIC_ASSETS = {'assets/README.md','assets/xiaojing-user-icon.png','assets/xiaojing-user-icon.ico',
          'assets/qq-chatbot-fish-chat-v1.png','assets/qq-chatbot-fish-chat-v1.ico','assets/qq-chatbot-fish-chat-v1.prompt.md',
          'src/channel/ui/icons/xiaojing-user-icon.png','src/channel/ui/icons/xiaojing-user-icon.ico',
@@ -27,7 +27,8 @@ def version(root):
 
 def candidates(root):
     result = []
-    extras={'config/runtime-downloads.json','.github/workflows/windows-release.yml','tools/portable-launcher.cs'}
+    api_only = version(root)=='1.00.01'
+    extras={'config/qq-native-compat.json','config/runtime-downloads.json','.github/workflows/windows-release.yml','tools/portable-launcher.cs'}
     paths = {root/name for name in ROOT_FILES | PUBLIC_ASSETS | extras | {'config/settings.json','config/local.example.json','user_plugins/impression_example.py'}}
     paths.update(root.glob('requirements*.txt'))
     for folder in ('src','tools','tests','docs'):
@@ -45,6 +46,7 @@ def candidates(root):
         allowed = name in ROOT_FILES or (len(rel.parts)==1 and path.name.startswith('requirements') and path.suffix=='.txt')
         allowed |= name in ('config/settings.json','config/local.example.json','user_plugins/impression_example.py') or name in PUBLIC_ASSETS or name in extras
         allowed |= rel.parts[0] in ('src','tools','tests','docs') and path.suffix in TREE_SUFFIXES
+        if api_only and name in ('docs/MAGPIE_SETUP.md','docs/assets/magpie-quickstart.svg'):continue
         if allowed:
             result.append((path,name))
     return result
@@ -76,12 +78,16 @@ def build_release(root=ROOT, output=None):
         raise ValueError('公开默认配置必须保持账号/模型为空且 QQ 关闭')
     if cfg['safety']['mode']!='paused' or not cfg['safety']['groups_muted']:
         raise ValueError('公开默认配置必须暂停且群静默，由新用户手动开启回复')
+    if cfg['group_monitor']['groups']:
+        raise ValueError('公开包不得预设监听群号或群备注')
     if cfg['agent_link']['enabled'] or cfg['agent_link']['command'] or cfg['agent_link']['cwd'] or cfg['agent_link']['name']!='工作 Agent':
         raise ValueError('公开包不得包含私人 Agent 命令、路径或已启用绑定')
     if cfg['role']['card']!='src/persona/role.md':
         raise ValueError('公开默认配置必须使用通用人设')
-    if cfg['model']['provider']!='magpie' or cfg['model']['base_url']!='http://127.0.0.1:3425/v1':
-        raise ValueError('公开包默认使用 Magpie；自定义 API 地址必须保留在本机配置')
+    api_only=release_version=='1.00.01'
+    expected=('openai_compatible','', 'HARNESS_API_KEY') if api_only else ('magpie','http://127.0.0.1:3425/v1','MAGPIE_API_KEY')
+    if tuple(cfg['model'][k] for k in ('provider','base_url','key_env'))!=expected:
+        raise ValueError('公开包不能预填私人自定义 API；默认接入配置必须与版本一致')
     if cfg['identity']['default_nickname']!='大肥鱼':
         raise ValueError('公开默认角色昵称必须使用通用名称；个人自定义应保存在 data')
     if any(cfg[group]['enabled'] for group in ('awakening','music','devices','voice','learning','plugins')) or cfg['music']['allow_control'] or cfg['role']['evolution_enabled']:

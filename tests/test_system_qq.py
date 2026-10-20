@@ -97,36 +97,19 @@ class SystemQQTests(unittest.TestCase):
             self.assertIsNone(system_qq._registry_install_dir())
 
 
-class ReuseInstallTests(unittest.TestCase):
-    """向导准备组件时：本机有 QQ 就复用，不下载。"""
-
-    def test_reuses_system_qq_instead_of_downloading(self):
-        import copy
-        import threading
+class DedicatedInstallTests(unittest.TestCase):
+    def test_system_client_is_never_reused_or_patched(self):
+        import copy,threading
         from unittest.mock import Mock
         from src.core.config import load
         from src.core.onboarding import Onboarding
-        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);root=Path(temp.name)
-        cfg=load(root/'absent.json');api=Mock();api._command_lock=threading.Lock()
-        api._backend.port.return_value=False
-        setup=Onboarding(api)
-        saved={}
-        # 造一个已就绪的 NapCat，让流程直接走到 QQ 那一步。
-        napcat=root/'.runtime/napcat';napcat.mkdir(parents=True)
-        (napcat/'NapCatWinBootMain.exe').write_bytes(b'MZ')
-        # _install 会在 finally 里释放命令锁，所以调用前要先持有它。
-        api._command_lock.acquire()
-        with patch('src.core.onboarding.ROOT',root),\
-             patch('src.core.onboarding.load',lambda:copy.deepcopy(cfg)),\
-             patch('src.core.onboarding.find_usable',return_value={'path':r'C:\Program Files\Tencent\QQNT\QQ.exe'}),\
-             patch('src.core.onboarding.save_local',side_effect=lambda patch: saved.update(patch)),\
-             patch('src.core.onboarding.download',side_effect=AssertionError('不应下载 QQ')),\
-             patch('src.core.onboarding.catalog',return_value={'napcat':{'url':'https://github.com/x','sha256':'0'*64,'version':'1','max_bytes':1},'qq':{'url':'https://x','sha256':'0'*64,'version':'1','max_bytes':1},'limits':{'max_unpacked_bytes':1,'max_files':1,'download_timeout_seconds':1,'extract_timeout_seconds':1}}):
-            setup._install()
-        self.assertEqual(setup._job['stage'],'done',setup._job['message'])
-        self.assertIn('qq',saved)
-        self.assertEqual(saved['qq']['client_path'],r'C:\Program Files\Tencent\QQNT\QQ.exe')
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);cfg=load(root/'absent');cfg['qq']['client_path']='C:/personal/QQ.exe'
+            api=Mock();api._command_lock=threading.Lock()
+            with patch('src.core.onboarding.ROOT',root),patch('src.core.onboarding.load',lambda:copy.deepcopy(cfg)):
+                state=Onboarding(api).status()
+            self.assertFalse(state['components']['qq'])
+            self.assertFalse(state['qq_client']['reused'])
+            self.assertFalse(state['bridge']['launch_available'])
 
-
-if __name__=='__main__':
-    unittest.main()
+if __name__=='__main__':unittest.main()

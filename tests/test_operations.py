@@ -37,7 +37,7 @@ class BackupTests(unittest.TestCase):
                 self.assertEqual(len(store.read('people/owner/memory')),1)
 
 class ReconnectTests(unittest.IsolatedAsyncioTestCase):
-    async def test_real_websocket_reconnect_history_and_outgoing_filter(self):
+    async def test_real_native_stream_reconnect_and_no_fabricated_history(self):
         with tempfile.TemporaryDirectory() as temp:
             cfg=load(Path(temp)/'no-local.json');store=Store(temp);safety=Safety(cfg['safety'],store,lambda *a,**k:None)
             received=[];seen=set();events=[];count=0;ready=asyncio.Event()
@@ -50,15 +50,17 @@ class ReconnectTests(unittest.IsolatedAsyncioTestCase):
                 elif name=='get_status':data={'online':True}
                 else:data={'messages':[{'message_id':1,'sender':{'user_id':123},'time':1,'message':'没看过的约定'}, {'message_id':2,'user_id':123,'sender':{'user_id':456},'time':2,'message':'机器人自己发的话'}]}
                 return web.json_response({'status':'ok','retcode':0,'data':data})
-            async def ws_handler(r):
+            async def event_handler(r):
                 nonlocal count
-                ws=web.WebSocketResponse();await ws.prepare(r);count+=1
-                await ws.send_json({'post_type':'message','message_type':'private','message_id':1,'user_id':123,'time':1,'message':'重复上报'})
+                self.assertEqual(r.headers.get('X-QQ-ChatBot'),'1')
+                stream=web.StreamResponse(headers={'Content-Type':'application/x-ndjson'})
+                await stream.prepare(r);count+=1
+                await stream.write((json.dumps({'post_type':'message','message_type':'private','message_id':1,'user_id':123,'time':1,'message':'重复上报'})+'\n').encode())
                 if count>=2:ready.set()
-                await asyncio.sleep(.03);await ws.close();return ws
-            app=web.Application();app.router.add_get('/event',ws_handler);app.router.add_post('/{action}',action)
+                await asyncio.sleep(.03);await stream.write_eof();return stream
+            app=web.Application();app.router.add_get('/events',event_handler);app.router.add_post('/{action}',action)
             async with TestServer(app) as srv,aiohttp.ClientSession() as session:
-                c=copy.deepcopy(cfg['qq']);c.update(http_url=str(srv.make_url('')).rstrip('/'),ws_url=str(srv.make_url('/event')).replace('http:','ws:'),reconnect_min_seconds=.01,reconnect_max_seconds=.05)
+                c=copy.deepcopy(cfg['qq']);c.update(native_port=srv.port,reconnect_min_seconds=.01,reconnect_max_seconds=.05)
                 q=QQBridge(c,'123',session,store,lambda level,event,**kw:events.append(event),receive,safety)
                 task=asyncio.create_task(q.run())
                 try:
@@ -67,7 +69,8 @@ class ReconnectTests(unittest.IsolatedAsyncioTestCase):
                 finally:task.cancel();await asyncio.gather(task,return_exceptions=True)
             self.assertGreaterEqual(count,2)
             self.assertEqual(len(received),1)
-            self.assertTrue(received[0]['historical'])
+            self.assertFalse(received[0]['historical'])
+            self.assertIn('qq_catchup_unsupported',events)
             self.assertIn('qq_disconnected',events)
 
 if __name__=='__main__':unittest.main()

@@ -1,18 +1,12 @@
 {
   "schema": "qq-chatbot.downloads.v1",
-  "napcat": {
-    "version": "4.18.38",
-    "url": "https://github.com/NapNeko/NapCatQQ/releases/download/v4.18.38/NapCat.Shell.zip",
-    "sha256": "735f2e633247df3ffd6e8ee8b84d7039c315b2655f5807e5f0029f93d2c30016",
-    "max_bytes": 80000000
-  },
   "qq": {
     "version": "9.9.33-52230",
     "url": "https://qqdl.gtimg.cn/qqfile/QQNT/9.9.33/release/497e2f1f/QQ_9.9.33_260813_x64_01.exe",
     "sha256": "b25c0d3ce9df764074a9118d0ded927e1b2d7ebf60e306112e8df18a040ec492",
     "max_bytes": 400000000,
     "min_build_id": 40768,
-    "note": "9.9.33 为正式通道且经 NapCat 官方实测；buildId 低于 40768 会被腾讯以 error 45 拒绝登录。"
+    "note": "固定官方 QQ 客户端下载版本；原生桥接的兼容性与真实登录仍待验收。"
   },
   "python": {
     "version": "3.13.16",

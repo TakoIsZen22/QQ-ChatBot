@@ -120,7 +120,7 @@ class DesktopApp:
         row=ttk.Frame(self.qr_page);row.pack()
         ttk.Button(row,text='启动QQ',command=lambda:self.operation(self.backend.start_qq)).pack(side='left',padx=5)
         ttk.Button(row,text='刷新二维码',command=self.refresh_qr).pack(side='left',padx=5)
-        ttk.Button(row,text='打开NapCat管理页',command=lambda:webbrowser.open('http://127.0.0.1:6099/webui')).pack(side='left',padx=5)
+        ttk.Button(row,text='QQ 接入指南',command=lambda:os.startfile(str(ROOT/'docs/QQ_SETUP.md'))).pack(side='left',padx=5)
 
     def build_logs(self):
         ttk.Button(self.log_page,text='刷新运行记录',command=self.refresh_logs).pack(anchor='w',pady=(0,10))
@@ -221,11 +221,11 @@ class DesktopApp:
         self.async_job(lambda:self.backend.request('config',{'model':{'main':name}}),lambda r:self.notice.set('模型已保存，请重启聊天，再点「只回复」。'))
 
     def refresh_qr(self):
-        path=ROOT/'.runtime/napcat/cache/qrcode.png'
+        path=ROOT/'.runtime/qq-native/qrcode.png'
         if path.is_file() and time.time()-path.stat().st_mtime>self.cfg['desktop']['qr_max_age_seconds']:
             self.qr_image=None
             self.qr_stamp=path.stat().st_mtime
-            self.qr_label.configure(image='',text='二维码已过期，等待NapCat生成新二维码。')
+            self.qr_label.configure(image='',text='二维码已过期；自写 QQ 接入仍待验收，请查看接入指南。')
         if path.is_file() and path.stat().st_mtime!=self.qr_stamp:
             try:
                 image=tk.PhotoImage(file=str(path))

@@ -115,7 +115,7 @@ class DesktopLifecycle:
             item('打开主窗口',lambda:self.action('show'),True),
             item('全部暂停',lambda:self.api.request('safety',{'mode':'paused'})),
             item('恢复，只回复',lambda:self.api.request('safety',{'mode':'reply_only'})),pystray.Menu.SEPARATOR,
-            item('启动聊天与QQ',lambda:self.api.command('start')),item('停止聊天与QQ',lambda:self.api.command('stop')),
+            item('启动聊天服务',lambda:self.api.command('start')),item('停止聊天与QQ',lambda:self.api.command('stop')),
             item('打开项目文件夹',lambda:self.api.open_target('project')),pystray.Menu.SEPARATOR,
             item('退出界面，后台继续',lambda:self.api.window_action('exit_ui')),
             item('退出并停止全部',lambda:self.api.window_action('exit_all'))))
@@ -170,7 +170,7 @@ class DesktopLifecycle:
     def report_error(self,message):
         repeated=message==self._last_error
         self._last_error=message
-        cfg=load();Log(Store(ROOT/'.runtime/desktop-logs'),(cfg['model']['key_env'],cfg['qq']['token_env']))('ERROR','desktop_error',raw=message)
+        cfg=load();Log(Store(ROOT/'.runtime/desktop-logs'),(cfg['model']['key_env'],))('ERROR','desktop_error',raw=message)
         if self.tray_available and not repeated:
             try:self.tray.notify('程序操作未完成，请打开运行记录或程序诊断查看。',NAME)
             except Exception:pass

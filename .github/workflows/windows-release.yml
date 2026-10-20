@@ -37,9 +37,7 @@ jobs:
       - name: Build Windows and clean source packages
         shell: pwsh
         run: |
-          python tools/build-windows.py --sevenzip 'C:\Program Files\7-Zip\7z.exe'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python tools/package-release.py
+          python tools/build-editions.py --sevenzip 'C:\Program Files\7-Zip\7z.exe'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:

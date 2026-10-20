@@ -11,7 +11,7 @@ import torch
 torch.set_num_threads(int(sys.argv[5]) if len(sys.argv)>5 else 2)
 model = whisper.load_model(sys.argv[2],download_root=sys.argv[4] if len(sys.argv)>4 else None)
 try:
-    # OneBot get_record 请求 PCM wav；16k 单声道可直接进入 whisper，无需 ffmpeg。
+    # 本机 PCM wav 的16k单声道可直接进入 whisper，无需 ffmpeg。
     with wave.open(sys.argv[1],'rb') as wav:
         if wav.getsampwidth()!=2:raise ValueError('非16bit PCM')
         rate=wav.getframerate();channels=wav.getnchannels();pcm=wav.readframes(wav.getnframes())
