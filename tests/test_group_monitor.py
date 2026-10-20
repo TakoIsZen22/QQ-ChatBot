@@ -54,7 +54,7 @@ class MonitorTests(unittest.TestCase):
         self.monitor.ingest(msg)
         row = self.monitor.rows('11111')[0]
         self.assertEqual(row['text'], '<script>alert(1)</script>[图片][语音]@全体成员[表情]')
-        self.assertNotIn('private.invalid', self.store.path('groups/11111/monitor').read_text())
+        self.assertNotIn('private.invalid', self.store.path('groups/11111/monitor').read_text(encoding='utf-8'))
         self.assertEqual(len(list(Path(self.temp.name).rglob('*.*'))), 1)
 
     def test_limits_and_tail_multibyte_boundaries(self):
