@@ -116,5 +116,9 @@ def build_release(root=ROOT, output=None):
         for name,raw in files.items():
             archive.writestr(prefix+name,raw)
         archive.writestr(prefix+'manifest.json',json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+    digest=hashlib.sha256(output.read_bytes()).hexdigest()
+    # 源码包同样给出校验文件，和 Windows 绿色包保持一致。
+    # 用 LF 换行，Windows 的 write_text 默认会写 CRLF，导致 sha256sum -c 失败。
+    output.with_suffix('.zip.sha256').write_bytes((digest+'  '+output.name+'\n').encode('ascii'))
     return {'path':str(output.resolve()),'version':release_version,'files':len(files),
-            'sha256':hashlib.sha256(output.read_bytes()).hexdigest()}
+            'sha256':digest}

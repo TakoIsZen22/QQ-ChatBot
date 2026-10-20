@@ -59,7 +59,9 @@ def main():
     with zipfile.ZipFile(out,'x',compression=zipfile.ZIP_DEFLATED) as z:
         for p in sorted(stage.rglob('*')):
             if p.is_file():z.write(p,stage.name+'/'+p.relative_to(stage).as_posix())
-    sha=hashlib.sha256(out.read_bytes()).hexdigest();out.with_suffix('.zip.sha256').write_text(sha+'  '+out.name+'\n',encoding='ascii')
+    sha=hashlib.sha256(out.read_bytes()).hexdigest()
+    # 用 LF 换行：Windows 的 write_text 默认写 CRLF，会让 sha256sum -c 失败。
+    out.with_suffix('.zip.sha256').write_bytes((sha+'  '+out.name+'\n').encode('ascii'))
     print(json.dumps({'path':str(out),'stage':str(stage),'sha256':sha,'files':len(files)},ensure_ascii=False))
 
 
