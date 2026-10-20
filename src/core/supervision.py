@@ -34,7 +34,7 @@ def collect(cfg=None):
             value = json.loads(raw)
             if not is_harness(value):
                 raise ValueError('wrong application')
-            for key in ('mode','groups_muted','busy','queue','memory_count','last_spoke','agent_active'):
+            for key in ('mode','groups_muted','busy','queue','memory_count','last_spoke'):
                 if key in value:
                     status[key] = value[key]
             if cfg['qq']['enabled']:

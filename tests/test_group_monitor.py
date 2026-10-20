@@ -110,7 +110,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.h.group_monitor.snapshot()['groups']), 2)
         self.h.receive.assert_not_awaited();self.h.model.complete.assert_not_awaited();self.h.qq.action.assert_not_awaited()
         self.assertEqual(self.h.store.read('chat'), []);self.assertEqual(self.h.store.read('inbox'), [])
-        self.assertEqual(self.h.agent_link.tasks(), [])
+        self.assertFalse(hasattr(self.h, 'agent_link'))
         self.h.set_safety('paused')
         await self.h.qq.ingest(event(message_id=2))  # 全暂停禁止说话，独立只读监听仍可接收。
         self.assertEqual(len(self.h.group_monitor.rows('11111')), 2)

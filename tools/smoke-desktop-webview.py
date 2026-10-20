@@ -30,7 +30,7 @@ def check():
         if not snap or not snap.get('status'):raise RuntimeError('页面未读到本机Harness状态')
         if not snap.get('runtime',{}).get('desktop'):raise RuntimeError('未使用真实原生桥')
         pages=[]
-        for page in ('chat','overview','memory','diary','soul','tasks','agent','stickers','abilities','settings','system','logs'):
+        for page in ('chat','overview','memory','diary','soul','tasks','stickers','abilities','settings','system','logs'):
             value=window.evaluate_js("(()=>{window.DFY.navigate("+json.dumps(page)+");return {page:window.DFY.state.page,active:document.querySelectorAll('.page.active').length,title:document.querySelector('#page-title').textContent,width:innerWidth,scrollWidth:document.documentElement.scrollWidth}})()")
             if value.get('page')!=page or value.get('active')!=1:raise RuntimeError('导航状态错误：'+page)
             if value['scrollWidth']>value['width']+2:raise RuntimeError('布局横向溢出：'+page)

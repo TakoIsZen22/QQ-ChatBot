@@ -2,7 +2,7 @@
 
 本机运行的个人 AI 伴侣：重长期记忆与人格养成，Windows 桌面端 + QQ 通道，数据全部存在本地。
 
-**1.00.01 只接你自己的 OpenAI 兼容 API**，不捆绑 Magpie，也不需要本机跑 Magpie 网关。想用 Magpie 或想要内置 Magpie 教程的，请下载 [1.00.02](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.00.02)。两版的聊天、QQ、记忆、人设与工作转交完全相同，只差模型接入方式。
+**1.00.01 只接你自己的 OpenAI 兼容 API**，不捆绑 Magpie，也不需要本机跑 Magpie 网关。想用 Magpie 或想要内置 Magpie 教程的，请下载 [1.00.02](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.00.02)。两版的聊天、QQ、记忆与人设完全相同，只差模型接入方式。
 
 ## 下载
 
@@ -35,9 +35,9 @@
 
 十二个模块：对话 / 记忆 / 角色 / 印象 / 日记 / 音乐 / 成长轨迹 / 学习 / QQ 桥接 / 设备 / 模型 / 插件。
 
-聊天之外，工作可明确转交给你绑定的通用 CLI 或桌面 Agent（MCP / 本机接口）。模型只能生成待你确认的草稿，不会自动派发；回执单独标注来源，不会被聊天模型当成指令执行。
+程序只负责聊天陪伴，已移除外部 Agent、CLI 绑定和工作转交接口。维护巡检与聊天插件仍保留。
 
-**群聊监听**（只读）：可以添加多个群查看群消息，AI 群内聊天、群记忆与群工作转交尚未实现。默认最多 12 个群，每窗最近 100 条，不下载附件、不转写、不上传模型。
+**群聊监听**（只读）：可以添加多个群查看群消息，AI 群内聊天与群记忆尚未实现。默认最多 12 个群，每窗最近 100 条，不下载附件、不转写、不上传模型。
 
 ## 安全边界
 
@@ -55,7 +55,6 @@
 
 - 交接与运维手册：`HANDOFF.md`、`AGENTS.md`
 - 只读巡检接口：`tools/supervise.py --json`（schema `dafeiyu.supervision.v1`）
-- 工作转交边界：`docs/AGENT_WORK.md`
 - 原生 QQ 桥接架构：`docs/NATIVE_QQ.md`
 - 发布流程：`docs/RELEASING.md`
 

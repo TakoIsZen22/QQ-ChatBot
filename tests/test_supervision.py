@@ -31,7 +31,7 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual(report['maintainer'],'其他监管助手')
         self.assertEqual(report['status']['mode'],'paused')
         self.assertIsNone(report['status']['last_spoke'])
-        self.assertEqual(report['status']['agent_active'],1)
+        self.assertNotIn('agent_active',report['status'])
         self.assertTrue(opener.open.call_args.args[0].endswith('/api/status'))
         self.assertEqual(opener.open.call_count,1)
         serialized = json.dumps(report)

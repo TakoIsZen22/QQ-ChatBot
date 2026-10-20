@@ -87,8 +87,6 @@ class DesktopBackend:
         core=self.stop_core();qq=self.stop_qq();return core+'；'+qq
 
     def restart_core(self):
-        if self.port(load()['server']['port']) and self.request('status').get('agent_active'):
-            raise RuntimeError('请先完成或取消已有工作，再重启聊天，避免中断外部 Agent')
         self.stop_core();return self.start_core()+'；为安全起见保留暂停，请点「只回复」恢复'
 
     def logs(self):

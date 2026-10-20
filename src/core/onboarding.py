@@ -43,7 +43,7 @@ class Onboarding:
         try:
             if self.api._backend.port(load()['server']['port']):
                 status=self.api._backend.request('status')
-                if status.get('busy') or status.get('queue') or status.get('agent_active'):raise RuntimeError('正在聊天或处理已转交工作，请完成或取消后再修改首次设置')
+                if status.get('busy') or status.get('queue'):raise RuntimeError('正在聊天，请完成后再修改首次设置')
                 self.api._backend.stop_core()
             old=load()
             if (old['qq']['bot_id'],old['owner']['qq_id'])!=(bot,owner):self.api._backend.stop_qq()

@@ -4,7 +4,7 @@
 
 ## 1. 生成干净源码包
 
-在项目根目录运行 `tools/test.bat`；检查默认配置账号与模型留空、高权限关闭、工作Agent绑定禁用且命令/路径为空、角色卡为通用模板，再运行：
+在项目根目录运行 `tools/test.bat`；检查默认配置账号与模型留空、高权限关闭、角色卡为通用模板，再运行：
 
 ```powershell
 .\.venv\Scripts\python.exe tools\package-release.py
@@ -22,7 +22,9 @@
 
 ## 3. 构建可下载的 Windows 版本
 
-源码上传不等于已经有可执行版。干净源码包含 `.github/workflows/windows-release.yml`；Actions 手动运行 Windows portable release 可下载两版产物。发布与主源码版本一致的 `v1.00.02` Release 会触发两版构建，在通过后附上四个 ZIP 与校验值；不要为 1.00.01 单独创建触发主源码构建的标签。仓库工作流使用 GitHub 自动凭据，无需填写个人 GitHub token。
+源码上传不等于已经有可执行版。干净源码包含 `.github/workflows/windows-release.yml`；Actions 手动运行 Windows portable release 时可选 all 或单版，产物保留在该次构建的 Artifacts，不自动发布。
+
+标签 `v1.00.01` 与 `v1.00.02` 各自只构建对应版本，并在自己的 Release 附上 Windows ZIP、源码 ZIP 及两个 SHA256 文件。主源码可以派生两版；1.00.01 专属源码不能构建 1.00.02。已公开的标签不移动，后续修订使用 `v1.00.01-r1` / `v1.00.02-r1`（再修订递增 r2），版本接入差异和包名保持不变。回退时解压旧 Release 到独立目录，按 HANDOFF 恢复私有数据，勿覆盖在用安装。重跑工作流只更新该标签资产，不删除 Release 或强推标签。仓库工作流使用 GitHub 自动凭据，无需填写个人 GitHub token。
 
 本机构建命令、依赖与许可见 [WINDOWS_BUILD](WINDOWS_BUILD.md)。用户按需下载 `qq-chatbot-1.00.01-windows-x64.zip` 或 `qq-chatbot-1.00.02-windows-x64.zip`，不要下载自动生成的 Source code ZIP。
 

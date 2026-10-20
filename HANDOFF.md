@@ -45,19 +45,9 @@ $snapshot = & '.\_runtime\python.exe' 'tools\manage.py' 'backup'
 
 跨机器恢复时独立QQ绝对路径需在新向导重新准备，API环境变量由使用者重新设。首次模型下载/QQ设备验证/扫码不由维护Agent代为完成。若官方组件下架或结构变更，先更新清单与适配器并重验，不能删除登录态、取消哈希校验或操作日常QQ。WebView2与Windows .NET/VC/UCRT仍是系统前提，未内置自动修复。
 
-## 聊天与外部工作边界
+## 聊天职责与旧版升级
 
-QQ ChatBot定位为聊天伴侣；工作通过明确转交由使用者自己的Agent执行。工作通道与maintenance.agent_name监管名称无关。侧栏“工作转交”可绑定通用CLI或桌面Agent，说明见docs/AGENT_WORK.md。
-
-- core/agent_link.py：独立事件队列、固定argv CLI子进程、桌面领取/回执与取消；core/agent_mcp.py：仅工作队列的stdio MCP服务，入口tools/agent-mcp.py；tools/agent-link.py为本机CLI适配。
-- Harness组合注入AgentLink；/工作只发送当前文字，历史/媒体不自动转交。模型agent_work_offer只建待确认草稿，无命令和任意上下文参数。
-- channel/local_ui.py提供agent-work（使用者）、agent-binding（热保存）、agent-inbox（外部桌面Agent）固定接口，桌面桥只开放前两者。前端agent-work.js/.css，公开帮助白名单增加agent教程。
-- 配置agent_link：enabled/name/transport(cli/desktop)/command(JSON argv)/cwd/notify_result/timeout_seconds/max_task_chars/max_output_bytes/max_result_chars/pending_limit/history_limit。默认禁用、无本机路径；凭据在外部Agent自身，不在本配置。
-- data/agent_tasks.jsonl含正文与回执，全量备份覆盖；退出或恢复后未完成工作标为interrupted，不自动重发。更换Agent需先完成/取消已有工作；桌面取消待其确认。
-- 全暂停取消排队并停止自有CLI进程树；外部桌面Agent只能请求取消，不能保证其已停。回执不是系统指令，不调用模型执行结果。默认不发回QQ，可选短回执遵守暂停/免打扰/配额。
-- 状态agent_active反映未完成工作；程序维护/改首次设置/普通重启前要求先处理工作，强制停止仍可用于保命。不要把Agent正在执行当成聊天核心空闲而重启。只读监管不领取或执行工作。
-
-验收要分别做：CLI的真实非交互stdin/最终stdout；桌面客户端的MCP配置、明确授权领取与回执。已有本机夹具不代替第三方Agent实连；本次没有替用户安装/登录或派发真实工作。
+已移除外部工作转交：没有 CLI/桌面 Agent 绑定、工作 MCP、工作 API、模型转交工具或 /工作 命令处理。旧 agent_link 配置读入时忽略，下一次主动保存配置时清理；不会执行其中的命令。旧 data/agent_tasks.jsonl 保持私有原样，随 data 快照备份，升级、恢复或重启均不读取、重跑或删除这些工作。升级前使用旧版确认 agent_active=0 并处理外部执行；新版不会管理其他 Agent 的进程。维护 Agent 的只读巡检与交接文档仍保留，属于人工运维入口。
 
 ## 1. 十二模块地图
 
@@ -77,7 +67,7 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 
 ### 独立群监听
 
-`modules/group_monitor.py` 属于通道模块9的只读扩展，由 Harness 注入 QQBridge。群 `post_type=message/message_type=group` 只交 GroupMonitor，随后返回；不会到 receive/worker、私人记忆、人设或 AgentLink，没有群发送动作。`channel/local_ui.py` 的 `/api/group-monitor` GET 提供白名单、连接与最近事件时间；GET `?group_id=群号` 返回该群有限条记录；POST 仅允许 add(group_id/name)、update(group_id/name/enabled)、remove(group_id)，字段严格校验，保留 Host/Origin/本机头限制。配置修改先 validate/save_local 成功再热替换。
+`modules/group_monitor.py` 属于通道模块9的只读扩展，由 Harness 注入 QQBridge。群 `post_type=message/message_type=group` 只交 GroupMonitor，随后返回；不会到 receive/worker、私人记忆或人设，没有群发送动作。`channel/local_ui.py` 的 `/api/group-monitor` GET 提供白名单、连接与最近事件时间；GET `?group_id=群号` 返回该群有限条记录；POST 仅允许 add(group_id/name)、update(group_id/name/enabled)、remove(group_id)，字段严格校验，保留 Host/Origin/本机头限制。配置修改先 validate/save_local 成功再热替换。
 
 配置 `group_monitor` 集中在 settings/local：`groups` 默认空，`max_groups=12/history_limit=100/max_text_chars=2000`；程序内管理群列表。记录私有 `data/groups/<id>/monitor.jsonl`，Store.tail 有限读取，按群保留近期 ID 去重。移除保留历史，停用不采集；没有历史补拉、撤回同步或附件抓取。全暂停只限制输出，被动监听继续；停止采集需单群停用或停服务。记录无自动清理，关注磁盘并在停机后归档。
 

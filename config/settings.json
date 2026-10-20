@@ -208,19 +208,5 @@
       128,
       256
     ]
-  },
-  "agent_link": {
-    "enabled": false,
-    "name": "工作 Agent",
-    "transport": "desktop",
-    "command": [],
-    "cwd": "",
-    "notify_result": false,
-    "timeout_seconds": 600,
-    "max_task_chars": 6000,
-    "max_output_bytes": 131072,
-    "max_result_chars": 12000,
-    "pending_limit": 10,
-    "history_limit": 50
   }
 }

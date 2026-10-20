@@ -80,8 +80,6 @@ def build_release(root=ROOT, output=None):
         raise ValueError('公开默认配置必须暂停且群静默，由新用户手动开启回复')
     if cfg['group_monitor']['groups']:
         raise ValueError('公开包不得预设监听群号或群备注')
-    if cfg['agent_link']['enabled'] or cfg['agent_link']['command'] or cfg['agent_link']['cwd'] or cfg['agent_link']['name']!='工作 Agent':
-        raise ValueError('公开包不得包含私人 Agent 命令、路径或已启用绑定')
     if cfg['role']['card']!='src/persona/role.md':
         raise ValueError('公开默认配置必须使用通用人设')
     api_only=release_version=='1.00.01'

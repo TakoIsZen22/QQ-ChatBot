@@ -96,6 +96,10 @@ def until(expression):
 def check():
     try:
         window.events.loaded.wait(20);until("!!window.DFY?.state.cfg && document.querySelector('#onboarding-dialog')?.open")
+        assert window.evaluate_js("!document.querySelector('[data-nav=agent]') && !document.querySelector('#page-agent') && !window.AgentWorkUI")
+        window.evaluate_js("window.DFY.navigate('agent')")
+        assert window.evaluate_js("window.DFY.state.page==='chat'")
+        result['retired_work_absent']=True
         from src.core.edition import capabilities
         expected=capabilities()['providers']
         for selector in ('#setup-provider','#model-provider'):

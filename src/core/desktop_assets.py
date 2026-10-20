@@ -30,7 +30,7 @@ class DesktopAssets:
                     attr, asset = match.groups()
                     digest = hashlib.sha256((self.root/asset).read_bytes()).hexdigest()[:16]
                     return f'{attr}="{asset}?v={digest}"'
-                html = re.sub(r'(href|src)="(desktop\.css|desktop\.js|stickers\.js|system\.js|soul\.js|soul\.css|identity\.js|identity\.css|model-settings\.js|guides\.js|guides\.css|onboarding\.js|onboarding\.css|agent-work\.js|agent-work\.css|group-monitor\.js|group-monitor\.css)"', version, html)
+                html = re.sub(r'(href|src)="(desktop\.css|desktop\.js|stickers\.js|system\.js|soul\.js|soul\.css|identity\.js|identity\.css|model-settings\.js|guides\.js|guides\.css|onboarding\.js|onboarding\.css|group-monitor\.js|group-monitor\.css)"', version, html)
                 body = html.encode('utf-8')
         headers = [('Content-Type', mime), ('Content-Length', str(len(body))),
                    ('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0'),

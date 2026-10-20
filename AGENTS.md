@@ -13,5 +13,4 @@
 
 交接验收：重启 → 换模型并换回 → 备份 JSONL 与附件 → 恢复 → 核对基线。完整命令见 HANDOFF。每次交接记录版本、日期、实际通过项、待验收项和必要的回滚步骤。
 
-- QQ ChatBot只负责聊天陪伴与明确转交，工作执行由使用者绑定的外部Agent承担。模型agent_work_offer只生成待确认原文草稿，不能直接派发CLI；历史与媒体不自动转交。读取docs/AGENT_WORK.md了解边界。
-- 工作数据data/agent_tasks.jsonl为私有。维护前检查status.agent_active；中断或恢复不得自动重发，桌面取消需外部Agent确认。MCP工作桥只开放明确转交的任务，不开放聊天/记忆/人格/通用执行。
+- QQ ChatBot只负责聊天、陪伴与记忆，已移除外部 Agent/CLI 绑定与工作转交。旧 agent_link 配置仅作弃用迁移，旧 data/agent_tasks.jsonl 为私有历史，保留备份，不读取、派发或删除。维护监管文档不构成执行授权。

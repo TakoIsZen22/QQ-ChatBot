@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def migrate_local(value):
     """Retire the previous external transport configuration without reading credentials."""
     value=copy.deepcopy(value)
+    # Retired work bindings are ignored, never executed or copied on the next save.
+    if isinstance(value,dict):value.pop('agent_link',None)
     if isinstance(value,dict) and isinstance(value.get('qq'),dict):
         for key in ('http_url','ws_url','token_env','webui_url','history_limit'):
             value['qq'].pop(key,None)
@@ -56,8 +58,6 @@ def validate(c):
     finite(c)
     from ..modules.group_monitor import validate_monitor
     validate_monitor(c['group_monitor'])
-    from .agent_link import validate_binding
-    validate_binding(c['agent_link'])
     identity=c['identity']
     for key,maximum in (('max_nickname_chars',80),('max_appearance_chars',12000),('max_image_bytes',2097152),('max_pixels',32000000),('portrait_edge',2048),('icon_edge',256)):
         if type(identity[key]) is not int or not 1<=identity[key]<=maximum:raise ValueError('角色定制限制无效: '+key)

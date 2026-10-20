@@ -1,17 +1,19 @@
 # QQ ChatBot
 
-[下载 Windows 桌面版](https://github.com/TakoIsZen22/QQ-ChatBot/releases/latest) · [新手教程](docs/GETTING_STARTED.md) · [CLI / 桌面 Agent 接入](docs/AGENT_WORK.md)
+[下载 Windows 桌面版](https://github.com/TakoIsZen22/QQ-ChatBot/releases/latest) · [新手教程](docs/GETTING_STARTED.md)
 
 Windows 本机个人 AI 伴侣，采用 **MIT** 许可。本次提供两种发行版本，聊天、记忆、人设与 QQ 功能相同，区别在模型接入方式：
 
 | 版本 | 模型接入 | Windows 包 |
 |---|---|---|
-| **1.00.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | `qq-chatbot-1.00.01-windows-x64.zip` |
-| **1.00.02** | 自有 API + 可选 Magpie 本机网关 | `qq-chatbot-1.00.02-windows-x64.zip` |
+| **1.00.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.01-r1/qq-chatbot-1.00.01-windows-x64.zip) |
+| **1.00.02** | 自有 API + 可选 Magpie 本机网关 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.02-r1/qq-chatbot-1.00.02-windows-x64.zip) |
 
 两包均自带 Python 与桌面启动器；1.00.02 的 Magpie 接入使用 `http://127.0.0.1:3425/v1`，不捆绑安装 Magpie。[版本选择、安装与切换](docs/EDITIONS.md)。源码主分支为 1.00.02，1.00.01 由同一份源码经发行脚本生成。
 
-QQ ChatBot负责聊天陪伴，不承接工作执行。工作可明确转交给你绑定的通用CLI或桌面Agent（MCP/本机接口），回执单独标注来源。
+QQ ChatBot负责聊天、陪伴与记忆，不提供外部 Agent、CLI 绑定或工作转交。
+
+当前下载为 **r1 修订**，已移除工作绑定；程序内版本号与模型接入差异仍为 1.00.01 / 1.00.02。旧 Release 保留用于回滚。
 
 每份安装服务一个使用者，可交给任意获得用户授权的 Agent 或人工维护，不依赖指定 Agent 产品。
 
@@ -42,14 +44,6 @@ Windows包需与本版本一致，完整解压后双击QQ ChatBot.exe。旧版�
 程序设置包含开机自启、托盘、主题/字号、备份恢复、诊断与 Agent 巡检。窗口 X 默认收进托盘；真正退出用 Ctrl Q 或托盘菜单。详见 [桌面说明](docs/DESKTOP.md)。
 
 接入教程可在「设置 → 模型与 API 接入」直接阅读；1.00.01 仅显示自有 API 教程，1.00.02 同时显示 Magpie 教程。桌面帮助不依赖聊天核心正在运行。
-
-## 工作转交与 CLI / 桌面 Agent
-
-侧栏“工作转交”可配置通用CLI的固定argv与工作目录，或复制MCP配置接入支持stdio MCP的桌面Agent。默认关闭，保存绑定不自动测试执行。
-
-明确转交：在页面填写并确认，或主人QQ私聊发送 `/工作 具体请求`。聊天模型的建议只生成待确认草稿；不携带完整聊天、记忆、人设或密钥。桌面Agent需主动领取，接入MCP不会自动唤醒另一会话。
-
-**[完整接入教程](docs/AGENT_WORK.md)**。取消、暂停、失败不自动重跑；独立桌面Agent的停止需要它自己配合。维护监管名称与真正工作绑定分别设置。
 
 ## 任意 Agent 监管
 

@@ -16,8 +16,8 @@ from .service_intent import ServiceIntent
 from .product import is_harness
 from ..version import VERSION
 
-READ_ENDPOINTS={'status','chat','memory','diary','config','models','sticker-intents','supervision','soul','identity','agent-work','group-monitor'}
-WRITE_ENDPOINTS={'chat','memory','diary','growth','promise','safety','config','emotion','music','device','study','mcp','persona','transcribe','share','sticker-intents','soul','identity','model-connection','agent-work','agent-binding','group-monitor'}
+READ_ENDPOINTS={'status','chat','memory','diary','config','models','sticker-intents','supervision','soul','identity','group-monitor'}
+WRITE_ENDPOINTS={'chat','memory','diary','growth','promise','safety','config','emotion','music','device','study','mcp','persona','transcribe','share','sticker-intents','soul','identity','model-connection','group-monitor'}
 DATA_STREAMS={'emotion','impressions','growth','promises','promise_results','learning','learning_reviews','notifications','plugin_audit','sleep_runs','share_drafts','media','stickers'}
 
 class DesktopApi:
@@ -42,17 +42,6 @@ class DesktopApi:
         if action=='refresh_qr':return self._onboarding.refresh_qr()
         if action=='stop':return self._onboarding.stop()
         raise PermissionError('未允许的首次设置操作')
-
-    def agent_connection(self):
-        from .runtime_paths import python_command
-        from .agent_mcp import mcp_configuration
-        return mcp_configuration(ROOT,python_command())
-
-    def agent_pick(self,kind):
-        if kind not in ('executable','cwd') or not self._lifecycle:raise ValueError('请选择程序路径或工作目录，并在桌面端操作')
-        import webview
-        result=self._lifecycle.window.create_file_dialog(webview.OPEN_DIALOG if kind=='executable' else webview.FOLDER_DIALOG)
-        return {'path':result[0] if result else None}
 
     def _bind_lifecycle(self,lifecycle):self._lifecycle=lifecycle
 
@@ -103,7 +92,7 @@ class DesktopApi:
             if was_running:
                 status=self._backend.request('status')
                 if not is_harness(status):raise RuntimeError('聊天端口不属于本项目，拒绝停止')
-                if status.get('busy') or status.get('queue') or status.get('agent_active'):raise RuntimeError('正在聊天或处理已转交工作，请完成或取消后再维护')
+                if status.get('busy') or status.get('queue'):raise RuntimeError('正在聊天，请完成后再维护')
             self._set_desired(False)
             changed=True
             if was_running:self._backend.stop_core();stopped=True
@@ -257,7 +246,7 @@ class DesktopApi:
             os.startfile(str(path));return {'opened':target}
         files={'project':ROOT,'handoff':ROOT/'HANDOFF.md','logs':ROOT/cfg['paths']['logs'],
                'data':ROOT/cfg['paths']['data'],'backups':ROOT/cfg['paths']['backups'],
-               'diagnostics':ROOT/'.runtime/diagnostics','help':ROOT/'docs/DESKTOP.md','agent_work_guide':ROOT/'docs/AGENT_WORK.md',
+               'diagnostics':ROOT/'.runtime/diagnostics','help':ROOT/'docs/DESKTOP.md',
                'agent_guide':ROOT/'docs/AGENT_SUPERVISION.md','agent_rules':ROOT/'AGENTS.md','model_api_guide':ROOT/'docs/MODEL_API.md','magpie_guide':ROOT/'docs/MAGPIE_SETUP.md','getting_started':ROOT/'docs/GETTING_STARTED.md','qq_guide':ROOT/'docs/QQ_SETUP.md'}
         for key in ('backups','diagnostics'):files[key].mkdir(parents=True,exist_ok=True)
         urls={'web':f'http://127.0.0.1:{cfg["server"]["port"]}','magpie_official_docs':'https://usemagpie.ai/docs/zh/start'}
@@ -282,7 +271,7 @@ class DesktopApi:
                     draft=patch['soul_draft']
                     if draft is not None and (not isinstance(draft,dict) or set(draft)!={'text','revision'} or not isinstance(draft['text'],str) or len(draft['text'])>load()['role']['soul_max_chars'] or not isinstance(draft['revision'],str) or len(draft['revision'])>64):raise ValueError('人设草稿无效')
                 if 'draft' in patch and (not isinstance(patch['draft'],str) or len(patch['draft'])>load()['conversation']['max_input_chars']):raise ValueError('草稿长度无效')
-                if 'page' in patch and patch['page'] not in ('chat','overview','memory','diary','tasks','stickers','soul','abilities','settings','system','logs','agent','groups'):raise ValueError('页面无效')
+                if 'page' in patch and patch['page'] not in ('chat','overview','memory','diary','tasks','stickers','soul','abilities','settings','system','logs','groups'):raise ValueError('页面无效')
                 if 'channel' in patch and patch['channel'] not in ('all','qq','local'):raise ValueError('通道无效')
                 state.update(patch);path.parent.mkdir(parents=True,exist_ok=True)
                 temp=path.with_suffix('.tmp');temp.write_text(json.dumps(state,ensure_ascii=False),encoding='utf-8');temp.replace(path)

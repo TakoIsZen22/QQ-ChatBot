@@ -94,35 +94,6 @@ def build(h,shutdown):
         if action == 'remove':h.group_monitor.seen.pop(ident, None)
         h.log('INFO', 'group_monitor_changed', action=action, group_id=ident)
         return web.json_response({'saved': True, 'restart_required': False})
-    async def agent_work(r):
-        if r.method=='GET':return web.json_response(h.agent_link.snapshot())
-        a=await r.json()
-        if not isinstance(a,dict):raise ValueError('工作转交参数无效')
-        action=a.pop('action',None)
-        if action=='create' and set(a)=={'text'}:result=h.agent_link.create(a['text'])
-        elif action=='approve' and set(a)=={'task_id'}:result=h.agent_link.approve(a['task_id'])
-        elif action=='cancel' and set(a)=={'task_id'}:result=h.agent_link.cancel(a['task_id'])
-        else:raise ValueError('工作操作只允许新建、明确转交或取消；不接受命令或程序路径')
-        return web.json_response(result)
-    async def agent_binding(r):
-        from ..core.config import merge,validate
-        import copy
-        a=await r.json()
-        if not isinstance(a,dict) or set(a)-set(h.cfg['agent_link']):raise ValueError('Agent 绑定字段无效')
-        candidate=copy.deepcopy(h.cfg);merge(candidate,{'agent_link':a});validate(candidate)
-        if any(t['status'] in ('queued','running','cancel_requested') for t in h.agent_link.tasks()):raise ValueError('先完成或取消已有工作，再修改 Agent 绑定')
-        save_local({'agent_link':candidate['agent_link']});h.cfg['agent_link']=candidate['agent_link'];h.agent_link.cfg=h.cfg['agent_link'];h.agent_link.changed.set()
-        h.log('INFO','agent_binding_changed',enabled=h.agent_link.cfg['enabled'],transport=h.agent_link.cfg['transport'])
-        return web.json_response({'saved':True,'binding':h.agent_link.cfg,'restart_required':False})
-    async def agent_inbox(r):
-        if r.method=='GET':return web.json_response(h.agent_link.inbox())
-        a=await r.json()
-        if not isinstance(a,dict):raise ValueError('Agent 接入参数无效')
-        action=a.pop('action',None)
-        if action=='claim' and set(a)<= {'task_id'}:result=h.agent_link.claim(**a)
-        elif action=='complete' and set(a)=={'task_id','claim_id','status','result'}:result=await h.agent_link.complete(**a)
-        else:raise ValueError('桌面 Agent 只允许领取已授权工作、提交匹配回执')
-        return web.json_response(result)
     async def chat(r): return web.json_response(h.chat_media.chat_rows())
     async def send(r):
         a=await r.json()
@@ -229,21 +200,11 @@ def build(h,shutdown):
             from ..core.config import merge
             candidate=copy.deepcopy(h.cfg);merge(candidate,patch)
             if candidate['group_monitor']!=h.cfg['group_monitor']:raise ValueError('请在“群聊监听”页管理监听群；其他限制请停机后修改配置')
-        if 'agent_link' in patch:
-            import copy
-            from ..core.config import merge
-            candidate=copy.deepcopy(h.cfg);merge(candidate,patch)
-            if candidate['agent_link']!=h.cfg['agent_link']:raise ValueError('请在“工作转交”页修改绑定，防止切换正在处理的工作')
         save_local(patch)
         return web.json_response({'saved':True,'restart_required':True})
     app.router.add_get('/',index)
     app.router.add_get('/api/group-monitor',group_monitor)
     app.router.add_post('/api/group-monitor',group_monitor)
-    app.router.add_get('/api/agent-work',agent_work)
-    app.router.add_post('/api/agent-work',agent_work)
-    app.router.add_post('/api/agent-binding',agent_binding)
-    app.router.add_get('/api/agent-inbox',agent_inbox)
-    app.router.add_post('/api/agent-inbox',agent_inbox)
     app.router.add_get('/api/guide/{name}',guide)
     app.router.add_get('/api/identity',identity)
     app.router.add_post('/api/identity',identity)
