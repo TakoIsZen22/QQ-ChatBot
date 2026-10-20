@@ -23,18 +23,29 @@ def normalize_path(command):
 
     8.3 短名（RUNNER~1 / DESKTO~1.PY）与长名指向同一文件，
     但字符串不同，CI 上按字符串比较会误判失败。
+    目标文件可能尚不存在，因此不能只靠 realpath，还要用 GetLongPathName 展开短名。
     """
     parts=re.findall(r'"[^"]+"|\S+',command)
     candidates=[p.strip('"') for p in parts if p.strip('"').startswith(('C:\\','D:\\','E:\\','%')) or p.strip('"').startswith(('/',))]
     for raw in candidates:
         # 优先取脚本本身（.py），命令行里常同时有解释器（.exe）。
         if not raw.lower().endswith('.py'):continue
-        if os.path.exists(raw):
-            # 用 realpath 把 8.3 短名还原成长名；同一文件即可判定相等。
-            try:raw=os.path.abspath(os.path.realpath(raw))
-            except OSError:pass
-        return os.path.normcase(raw)
+        raw=expand_short_name(raw)
+        return os.path.normcase(os.path.abspath(raw))
     return ''
+
+
+def expand_short_name(path):
+    """把 Windows 8.3 短名展开成长名；非 Windows 或失败时原样返回。"""
+    if os.name!='nt' or not os.path.exists(path):return path
+    try:
+        import ctypes
+        buf=ctypes.create_unicode_buffer(32768)
+        length=ctypes.windll.kernel32.GetLongPathNameW(path,buf,len(buf))
+        if 0<length<len(buf):return buf.value
+    except Exception:
+        pass
+    return path
 
 
 class FakeKey:

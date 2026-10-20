@@ -32,7 +32,8 @@ class LinkTests(unittest.IsolatedAsyncioTestCase):
     async def test_cli_stdin_is_only_authorized_text_not_shell_or_private_history(self):
         self.cli('echo');text='工作正文 & echo injected > unintended.txt $(whoami)'
         task=self.link.create(text);await self.link.execute_cli(task);result=self.link.get(task['task_id'])
-        self.assertEqual(result['status'],'completed');self.assertEqual(result['result_source'],'external_agent')
+        # 失败时把 detail 一并带出来，便于在 CI 日志里定位环境差异。
+        self.assertEqual(result['status'],'completed',result.get('detail',''));self.assertEqual(result['result_source'],'external_agent')
         payload=(self.root/'received.txt').read_text(encoding='utf-8');self.assertTrue(payload.endswith(text+'\n'))
         self.assertNotIn('soul.md',payload);self.assertFalse((self.root/'unintended.txt').exists())
 
