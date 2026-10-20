@@ -10,6 +10,7 @@
 - 修复：绿色包缺少 tkinter 时，桌面启动失败提示不再推荐不可用的 legacy 界面，改为引导使用浏览器界面。
 - 修复：`sha256` 校验文件改用 LF 换行，Linux/macOS 上 `sha256sum -c` 不再报错；源码包也补上校验文件。
 - 修复：桌面自启路径断言兼容 Windows 8.3 短名（`RUNNER~1`），CI 上不再误报。
+- 复用系统 QQ 时增加 **buildId 门槛校验**：低于腾讯可接受下限（`qq.min_build_id`，默认 40768）的 QQ 会被判定为过旧并跳过，避免用户白扫一次码才看到 error 45。门槛登记在 `config/runtime-downloads.json`，不硬编码。
 
 ## 0.10.0 · 2026-10-20
 

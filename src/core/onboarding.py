@@ -9,7 +9,7 @@ from pathlib import Path
 from .config import ROOT,load,save_local,merge,validate
 from .runtime_downloads import catalog,download,safe_zip
 from .runtime_paths import python_command,portable
-from .system_qq import find_usable
+from .system_qq import detect,find_usable
 
 HIDDEN=getattr(subprocess,'CREATE_NO_WINDOW',0)
 
@@ -95,13 +95,18 @@ class Onboarding:
                     (stage/'napcat').rename(nap)
                 if not installed['qq']:
                     # 本机已装 QQ 就直接复用，省掉一次几百 MB 的下载。
-                    system=find_usable()
+                    system=find_usable(ROOT)
                     if system:
                         self.update(stage='qq',message='检测到本机已安装 QQ，正在复用…',received=0,total=0)
                         save_local({'qq':{'client_path':system['path']}})
                     else:
+                        # 有 QQ 但版本过旧时说明原因，别让用户白扫一次码才发现被拒。
+                        stale=next((i for i in detect() if i['too_old']),None)
+                        if stale:
+                            self.update(stage='qq',message=f"检测到本机 QQ（{stale['version']}）版本过旧，腾讯服务器会拒绝登录，将改用独立客户端…",received=0,total=0)
                         if qq.exists() and any(qq.iterdir()):raise ValueError('独立 QQ 目录已有不完整文件，向导不会覆盖，请交由维护者检查')
-                        self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
+                        if not stale:
+                            self.update(stage='qq',message='正在下载独立 QQ（腾讯官方 CDN）…',received=0,total=0)
                         archive=download(cfg['qq'],runtime/'public-downloads',self._progress,cfg['limits']['download_timeout_seconds'])
                         seven=self._sevenzip(cfg)
                         self.update(stage='extract',message='正在解压独立机器人 QQ，不修改系统 QQ…')

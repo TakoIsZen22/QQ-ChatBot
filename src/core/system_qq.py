@@ -109,11 +109,51 @@ def package_json_of(folder):
     return None
 
 
+def build_id_of(folder):
+    """读取 QQ 的 buildId；读不到返回 0。"""
+    folder = Path(folder)
+    config = folder / 'versions' / 'config.json'
+    if not config.is_file():
+        return 0
+    try:
+        data = json.loads(config.read_text(encoding='utf-8-sig'))
+        return int(data.get('buildId') or 0)
+    except (OSError, ValueError, TypeError):
+        return 0
+
+
+def min_build_id(root=None):
+    """腾讯服务器接受的最低 QQ buildId。
+
+    低于该值的 QQ 会被以 error 45（版本过低）拒绝登录，与是否复用无关，
+    因此在复用前就要拦下来，不要让用户白等一次扫码。
+    """
+    if root is None:
+        from .config import ROOT as root
+    try:
+        catalog = json.loads((Path(root) / 'config' / 'runtime-downloads.json').read_text(encoding='utf-8-sig'))
+        return int((catalog.get('qq') or {}).get('min_build_id') or 0)
+    except (OSError, ValueError, TypeError):
+        return 0
+
+
+def too_old(folder, root=None):
+    """该 QQ 是否低于腾讯可接受的最低 buildId。"""
+    floor = min_build_id(root)
+    if not floor:
+        return False
+    build = build_id_of(folder)
+    if not build:
+        return False
+    return build < floor
+
+
 def detect():
     """返回可复用的系统 QQ 列表。
 
-    每项含 path（QQ.exe）、dir、version、package_json、usable。
+    每项含 path（QQ.exe）、dir、version、build_id、package_json、usable、too_old。
     usable 表示该目录具备 NapCat 注入所需的配套元数据。
+    too_old 表示版本低于腾讯接受的门槛，登录时会被 error 45 拒绝。
     """
     results = []
     for folder in install_dirs():
@@ -123,15 +163,20 @@ def detect():
             'path': str(binary),
             'dir': str(folder),
             'version': version_of(folder),
+            'build_id': build_id_of(folder),
             'package_json': str(package) if package else '',
             'usable': bool(package and package.is_file()),
+            'too_old': too_old(folder),
         })
     return results
 
 
-def find_usable():
-    """第一个可用的系统 QQ；没有返回 None。"""
+def find_usable(root=None):
+    """第一个可用的系统 QQ；没有返回 None。
+
+    版本过旧的（会被腾讯 error 45 拒绝）不算可用——复用它只会让用户白扫一次码。
+    """
     for item in detect():
-        if item['usable']:
+        if item['usable'] and not item['too_old']:
             return item
     return None
