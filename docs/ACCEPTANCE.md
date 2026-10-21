@@ -5,6 +5,7 @@
 - 固定末两位 `01` 为仅自有 API、`02` 为自有 API + 可选 Magpie；覆盖 `1.10`、`1.11`、`2.00` 功能版本的权限识别，未知后缀拒绝。运行时、源码打包、双版本构建及 Actions 标签校验使用相同规则，手动 Actions 用 all/api_only/api_magpie 选择发行。
 - 主源码全量 204 项 Python、28 项 Node 测试通过；从隐私白名单派生的 1.10.01 与 1.10.02 隔离源码目录各自全量 204 项 Python 通过。源码包分别含 222 / 224 个清单文件，逐文件 SHA256 与公开默认值校验通过，未含私人配置、账号、密码缓存、data、日志、备份或 QQ 登录态。1.10.01 无 Magpie 专用选项及教程。
 - 两版独立改动介绍位于 `docs/RELEASE_NOTES_1.10.01.md` / `docs/RELEASE_NOTES_1.10.02.md`。Windows 包由对应标签的 Actions 编译并自检；是否成功生成和上传以该标签 Actions 与 Release 四项资产为准，不以本机源码测试代替。
+- Windows 云端首次运行发现测试夹具混用短路径/完整路径，已将临时根目录统一 resolve。修正后 [主分支 Actions](https://github.com/TakoIsZen22/QQ-ChatBot/actions/runs/39590911193) 的 Python 3.13 全量测试、Node 测试、两版 Windows/源码构建与产物上传均通过；正式下载仍以各标签的发布任务为准。
 - 19:15 只读巡检 healthy，QQ 在线、paused、busy=false、queue=0，最后说话时间未变。发布未重启、解除暂停、调用模型或发送 QQ；本轮真实 QQ 账密/验证、群回复、断网恢复、新机器安装仍待使用者验收。当前仅适配 QQ 9.9.33-52230。
 - 回滚保留旧 Release 与安装目录。停止新版后按 HANDOFF 恢复旧目录和已验证快照，保留日志、限流、去重与 QQ profile；不要覆盖运行中的安装或清理私有状态。旧检查记录的“未发布”描述各次检查当时状态，发布结果以 GitHub 为准。
 

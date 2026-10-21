@@ -100,8 +100,10 @@ jobs:
             args=(--generate-notes)
             edition="${tag#v}"
             edition="${edition%%-r*}"
+            latest=(--latest=false)
+            if [[ "$edition" == *.02 ]]; then latest=(--latest); fi
             for candidate in "docs/RELEASE_NOTES_${tag#v}.md" "docs/RELEASE_NOTES_${edition}.md"; do
               if [ -f "$candidate" ]; then args=(--notes-file "$candidate"); break; fi
             done
-            gh release create "$tag" --verify-tag --title "QQ ChatBot $tag" "${args[@]}" dist/*
+            gh release create "$tag" --verify-tag --title "QQ ChatBot $tag" "${latest[@]}" "${args[@]}" dist/*
           fi
