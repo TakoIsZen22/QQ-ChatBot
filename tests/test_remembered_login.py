@@ -16,7 +16,8 @@ from src.core.remembered_login import RememberedLogin
 class RememberedLoginTests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
-        self.root=Path(temp.name);self.cfg=load(self.root/'absent.json')
+        # Windows CI TEMP can contain an 8.3 alias; stores resolve their root.
+        self.root=Path(temp.name).resolve();self.cfg=load(self.root/'absent.json')
         for name,value in (('ROOT',self.root),('load',Mock(return_value=self.cfg))):
             p=patch('src.core.desktop_api.'+name,value);p.start();self.addCleanup(p.stop)
         self.password='disposable-dpapi-fixture-password'
