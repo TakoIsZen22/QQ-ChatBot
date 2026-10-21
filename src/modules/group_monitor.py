@@ -17,7 +17,7 @@ def validate_monitor(cfg):
         raise ValueError('监听群数量超出限制')
     seen = set()
     for row in cfg['groups']:
-        if not isinstance(row, dict) or set(row) != {'group_id', 'name', 'enabled'}:
+        if not isinstance(row, dict) or not {'group_id', 'name', 'enabled'} <= set(row) or set(row) - {'group_id', 'name', 'enabled', 'reply_enabled', 'trigger', 'public_prompt'}:
             raise ValueError('群监听配置字段无效')
         ident = group_id(row['group_id'])
         if ident in seen:
@@ -25,6 +25,11 @@ def validate_monitor(cfg):
         seen.add(ident)
         if type(row['enabled']) is not bool:
             raise ValueError('群监听开关必须为布尔值')
+        if type(row.get('reply_enabled', False)) is not bool or row.get('trigger', 'at') not in ('at', 'all'):
+            raise ValueError('群回复开关或触发方式无效')
+        prompt = row.get('public_prompt', '')
+        if not isinstance(prompt, str) or len(prompt) > 2000:
+            raise ValueError('公开群人设限 2000 字')
         if not isinstance(row['name'], str) or len(row['name']) > 60 or any(ord(c) < 32 for c in row['name']):
             raise ValueError('群备注限 60 字单行文本')
 
@@ -49,7 +54,7 @@ class GroupMonitor:
             groups.append(dict(group, last_message_id=last[-1]['message_id'] if last else None,
                                last_received=last[-1]['ts'] if last else None))
         return {'groups': groups, 'max_groups': self.cfg['max_groups'],
-                'history_limit': self.cfg['history_limit'], 'read_only': True}
+                'history_limit': self.cfg['history_limit'], 'read_only': not any(g.get('reply_enabled') and g['enabled'] for g in groups)}
 
     def ingest(self, event):
         ident = str(event.get('group_id', ''))

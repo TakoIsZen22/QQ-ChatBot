@@ -1,6 +1,6 @@
 # 两种发行版本与接入教程
 
-| 项目 | 1.00.01 · 自有 API 版 | 1.00.02 · API + Magpie 版 |
+| 项目 | 1.10.01 · 自有 API 版 | 1.10.02 · API + Magpie 版 |
 |---|---|---|
 | 自有 OpenAI 兼容 API | 支持 | 支持 |
 | Magpie 专用选项与教程 | 无 | 支持，可选 |
@@ -9,15 +9,21 @@
 | Magpie 软件 | 不包含 | 不包含，复用你已安装的 Magpie |
 | 图标、QQ、聊天、记忆、人设 | 两版相同 | 两版相同 |
 
+## 版本号规则
+
+版本格式为 `主版本.功能版本.发行类型`。末两位固定：`01` = 仅自有 API，`02` = 自有 API + 可选 Magpie；不得用 `03` 等表示补丁。功能升级递增前两段，同一组保持聊天功能一致，例如下一组为 `1.11.01 / 1.11.02`。运行时权限与构建链均按这个规则识别发行类型，未知后缀拒绝运行。
+
+已公开标签不移动。相同功能版本的重新打包修订可用 `-r1`、`-r2` 标签后缀，并单独说明修复内容；程序的末两位仍只表示接入类型。
+
 ## 下载与安装
 
-在 Releases 的 Assets 下载所需的 `qq-chatbot-1.00.01-windows-x64.zip` 或 `qq-chatbot-1.00.02-windows-x64.zip`。完整解压到独立可写目录，双击 `QQ ChatBot.exe`；不需要另装 Python。Windows 的 WebView2、.NET Framework 与 VC/UCRT 前提见 GETTING_STARTED.md。
+在 Releases 的 Assets 下载所需的 `qq-chatbot-1.10.01-windows-x64.zip` 或 `qq-chatbot-1.10.02-windows-x64.zip`。完整解压到独立可写目录，双击 `QQ ChatBot.exe`；不需要另装 Python。Windows 的 WebView2、.NET Framework 与 VC/UCRT 前提见 GETTING_STARTED.md。
 
-当前修订标签为 `v1.00.01-r2` / `v1.00.02-r2`，两版均移除外部 Agent / CLI 工作绑定。程序版本号与 ZIP 文件名保留原版号；下载时核对修订标签，旧版仅供回滚。
+本轮版本为 `1.10.01` / `1.10.02`，对应发布标签 [v1.10.01](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.10.01) / [v1.10.02](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.10.02)，各自包含改动介绍。旧版 `v1.00.01-r2` / `v1.00.02-r2` 及其资产保留，不改标签或文件名。两版均不提供外部 Agent / CLI 工作绑定。
 
-首次启动保持全部暂停、QQ 未启用、账号及模型 ID 留空。先配置模型，再按程序设置中的首次向导保存双 QQ 账号、下载官方 QQ 组件、扫码登录与验收。两版都不会继承作者的账号、登录态、聊天或私人 soul.md。
+首次启动保持全部暂停、QQ 未启用、账号及模型 ID 留空。先配置模型，再按程序设置中的首次向导保存双 QQ 账号、准备官方 QQ 组件、选择扫码或账密登录并验收。账密真实流程待使用者验收。两版都不会继承作者的账号、登录态、聊天或私人 soul.md。
 
-## 1.00.01：自有 API
+## 1.10.01：自有 API
 
 1. 设置 → 模型与 API 接入，仅有「自定义 OpenAI 兼容 API」。填写服务方给出的 Base URL，通常以 `/v1` 结尾；不要填写完整 `/chat/completions`。远程地址必须 HTTPS，本机回环可 HTTP。
 2. 密钥环境变量名称填 `HARNESS_API_KEY` 或你选择的名称。在 Windows「编辑账户的环境变量」中自行配置同名变量；程序里不填密钥值。彻底退出托盘与核心后重开，以读取新环境。
@@ -26,7 +32,7 @@
 
 本版无预设外部 API 地址、模型、密钥或 Magpie 专用入口；手改配置为 Magpie 会明确报错，不会自动换服务。详细错误排查见 MODEL_API.md。
 
-## 1.00.02：自有 API 或可选 Magpie
+## 1.10.02：自有 API 或可选 Magpie
 
 自有 API 按上述步骤，先在接入方式选择「自定义 OpenAI 兼容 API」。程序不会因自有 API 失败而回退 Magpie。
 
@@ -36,7 +42,7 @@
 
 两个版本分别解压到不同目录，不覆盖正在运行的安装；同一时间只运行一个聊天安装，以免端口冲突。旧程序先确认没有未结束的外部工作，创建并验证数据快照，记录 API 地址、模型 ID 与暂停状态，然后从托盘退出并停止全部。
 
-在新安装先配置 API，再通过备份恢复入口迁移完整 JSONL 与附件。不要直接复制旧 config/local.json：旧 Magpie 配置在 1.00.01 会被拒绝；路径与账号应在新向导重新设置。Windows 环境变量由你自行管理。QQ 需在新安装重新准备组件并扫码；每台机器独立验收收发。需要开机自启或快捷方式时，只为当前安装重新登记。
+在新安装先配置 API，再通过备份恢复入口迁移完整 JSONL 与附件。不要直接复制旧 config/local.json：旧 Magpie 配置在 1.10.01 会被拒绝；路径与账号应在新向导重新设置。Windows 环境变量由你自行管理。QQ 需在新安装重新准备组件并扫码；每台机器独立验收收发。需要开机自启或快捷方式时，只为当前安装重新登记。
 
 回滚时退出并停止新安装，重新打开保留的旧目录；保持暂停，检查数据基线后由你决定恢复回复。不要清空日志、配额、去重或 QQ profile。
 
@@ -49,6 +55,6 @@ python -m unittest discover -s tests -q
 python tools/build-editions.py --sevenzip 'C:\Program Files\7-Zip\7z.exe'
 ```
 
-需要 Windows x64、VS C++/Windows SDK、7-Zip 和构建依赖；普通使用者不需要这些。仅源码包用 `python tools/build-editions.py --source-only`，单一版本可加 `--edition 1.00.01` 或 `--edition 1.00.02`。输出位于 dist，各含 ZIP、SHA256 校验文件；源码包不带 `windows-x64` 后缀。不会覆盖已有 ZIP 或 `.runtime/edition-builds/<版本>`，需要重建时先把旧产物与该构建目录移到自己选定的归档目录，不删除私人数据。
+需要 Windows x64、VS C++/Windows SDK、7-Zip 和构建依赖；普通使用者不需要这些。仅源码包用 `python tools/build-editions.py --source-only`，单一版本可加 `--edition 1.10.01` 或 `--edition 1.10.02`。输出位于 dist，各含 ZIP、SHA256 校验文件；源码包不带 `windows-x64` 后缀。不会覆盖已有 ZIP 或 `.runtime/edition-builds/<版本>`，需要重建时先把旧产物与该构建目录移到自己选定的归档目录，不删除私人数据。
 
 构建链先走 tools/package_release.py 隐私白名单，再由 tools/release_editions.py 改版本、公开默认值和 UI，最后在各自目录校验与打包。src/core/edition.py 校验运行时接入权限，所有模型请求仍走 src/modules/model.py。公共下载缓存仅复用固定运行组件，不复制本机环境或凭据。主源码的 config/local.json、data、logs、backups、.runtime 和私人人设均不进入包。

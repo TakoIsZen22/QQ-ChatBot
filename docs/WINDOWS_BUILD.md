@@ -2,7 +2,7 @@
 
 普通使用者阅读 GETTING_STARTED.md，不需要执行构建。
 
-1.00.01（仅自有 API）与 1.00.02（API + 可选 Magpie）从主源码一次构建，命令如下；版本区别、迁移与回滚见 EDITIONS.md。每个版本分别产生 Windows 与源码 ZIP 及 SHA256。主源码版本须为 1.00.02，1.00.01 专属源码可单独构建自身。
+1.10.01（仅自有 API）与 1.10.02（API + 可选 Magpie）从主源码一次构建，命令如下；版本区别、迁移与回滚见 EDITIONS.md。每个版本分别产生 Windows 与源码 ZIP 及 SHA256。主源码版本须为 1.10.02，1.10.01 专属源码可单独构建自身。
 
 ```powershell
 python tools/build-editions.py --sevenzip 'C:\Program Files\7-Zip\7z.exe'
@@ -41,7 +41,7 @@ python tools/package-release.py
 
 将**干净源码包的内容**放到仓库根，包含 `.github/workflows/windows-release.yml`。在 Actions 允许工作流运行，选择 Windows portable release → Run workflow，下载产物；其中 ZIP 才是给用户的包。
 
-发布 Releases 时主源码标签为 `v1.00.02`（与 src/version.py 一致），一次提供两个版本的四个 ZIP。release published 事件会针对该标签构建，通过测试后用仓库自己的短期 GITHUB_TOKEN 上传发布资产，不需硬编码个人 token。构建失败不会上传半成品。发布说明应指向 EDITIONS.md 与 GETTING_STARTED.md，并清楚区分 Windows 包与源码包。
+发布标签为 `v1.10.01` 或 `v1.10.02`，每个标签只构建对应版本的 Windows 与源码两个 ZIP，以及各自的 SHA256 文件。手动选择 all 才同时构建两版，结果保存在 Actions Artifacts。release published 或标签推送事件通过测试后使用仓库自己的短期 GITHUB_TOKEN 上传对应标签的发布资产，不需硬编码个人 token。构建失败不会上传半成品。发布说明应指向 EDITIONS.md 与 GETTING_STARTED.md，并清楚区分 Windows 包与源码包。
 
 本工作流已写入源码；是否在你的 GitHub 仓库成功运行，需要实际上传后观察 Actions。此地不声称远端流水线已通过。
 - QQ客户端固定版本、URL与SHA256见config/runtime-downloads.json，仅供研发准备，不表示原生桥接已验收。

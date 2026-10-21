@@ -36,7 +36,8 @@ test('native sends use only an observed owner UID and consume the hard quota on 
   for (let i = 0; i < 20; i++) await driver.action('send_private_msg', params);
   await assert.rejects(driver.action('send_private_msg', params), /rate_limited/);
   assert.equal(calls, 20);
-  for (const name of ['send_group_msg','set_friend_add_request','get_credentials','get_friend_msg_history']) await assert.rejects(driver.action(name, {}), /unsupported_action/);
+  await assert.rejects(driver.action('send_group_msg', {}), /recipient_not_allowed/);
+  for (const name of ['set_friend_add_request','get_credentials','get_friend_msg_history']) await assert.rejects(driver.action(name, {}), /unsupported_action/);
   driver.offline();
   assert.equal((await driver.action('get_status')).online, false);
 });
@@ -44,6 +45,18 @@ test('wrong account fails closed', async () => {
   const driver = new NativeDriver(policy, () => {}, () => {});
   driver.login({uin: '99999'});
   await assert.rejects(driver.action('get_login_info'), /not_logged_in/);
+});
+
+test('login ready, offline and same-session recovery publish state immediately', () => {
+  const events=[];const states=[];const service={addKernelMsgListener(){}};
+  const session={getMsgService:()=>service};
+  const driver=new NativeDriver(policy,e=>events.push(e),s=>states.push(s));
+  driver.login({uin:policy.bot});driver.attach(session);
+  assert.equal(events.at(-1).status.online,true);assert.equal(states.at(-1).phase,'ready');
+  driver.offline();assert.equal(events.at(-1).status.online,false);
+  driver.login({uin:policy.bot});driver.attach(session);
+  assert.equal(events.at(-1).status.online,true);
+  driver.login({uin:'99999'});assert.equal(events.at(-1).status.online,false);
 });
 test('bootstrap observes the official session without initializing a second session', async () => {
   let loginListener, messageListener, originalReady = 0, initialized = 0, created = 0;

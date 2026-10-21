@@ -25,7 +25,7 @@ class ReleaseTests(unittest.TestCase):
         self.write('config/local.example.json','{}')
         self.write('config/local.json',json.dumps({'owner':{'qq_id':'12345678901','name':'private-owner'}}))
         for name in ('data/chat.jsonl','logs/events.jsonl','backups/personal.json','config/persona.local.md',
-                     '.runtime/qq-native/private-session.json','.git/config','user_plugins/private.py','src/secret.local.py',
+                     '.runtime/qq-native/private-session.json','config/account.local.json','.runtime/account-remember.local.json','.runtime/account-attempts.json','.runtime/account-logs/events.jsonl','.git/config','user_plugins/private.py','src/secret.local.py',
                      'src/soul.md','docs/SOUL.md','data/persona/identity.jsonl','data/persona/appearance/icon-private.ico'):
             self.write(name,'DO-NOT-SHARE')
 

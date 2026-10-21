@@ -24,6 +24,7 @@ from ..modules.model import Model
 from ..modules.conversation import Conversation
 from ..modules.qq_bridge import QQBridge
 from ..modules.group_monitor import GroupMonitor
+from ..modules.group_chat import GroupChat
 from ..modules.awakening import Awakening
 from ..modules.music import Music
 from ..modules.devices import Devices
@@ -72,12 +73,17 @@ class Harness:
         self.active_operations=set()
         self.workers = []
         self.turn_lock = asyncio.Lock()
+        self.group_chat = GroupChat(cfg['group_chat'], self.group_monitor, self.store, self.model,
+                                    self.safety, self.log, self.qq.send_group, self.turn_lock,
+                                    lambda: self.identity.profile()['nickname'])
+        self.qq.group_receive = self.group_chat.receive
 
     def localtime(self):
         return datetime.now(self.zone)
 
     def start(self):
         self.workers = [asyncio.create_task(self.worker()),asyncio.create_task(self.awakening.run())]
+        self.workers.append(asyncio.create_task(self.group_chat.run()))
         if self.cfg['qq']['enabled']:
             self.workers.append(asyncio.create_task(self.qq.run()))
         # 不自动重发崩溃中断的轮次，避免对方实际已收到却重复发送。
@@ -98,6 +104,7 @@ class Harness:
 
     def set_safety(self, mode=None, groups_muted=None):
         self.safety.set(mode,groups_muted)
+        self.group_chat.cancel()
         if self.active_task:
             self.active_task.cancel()
         for task in list(self.active_operations):
@@ -311,5 +318,6 @@ class Harness:
             self.log('INFO','sleep_integrated',day=day)
 
     def status(self):
-        spoken=[r for r in self.store.read('chat') if r['role']=='assistant']
-        return {'name':NAME,'app_id':APP_ID,'version':VERSION,'time':self.localtime().isoformat(),'mode':self.safety.mode,'groups_muted':self.safety.groups_muted,'qq_enabled':self.cfg['qq']['enabled'],'qq_connected':self.qq.connected,'qq_online':self.qq.online,'qq_bot_id':self.qq.bot_id,'qq_last_event':self.qq.last_event,'model':self.cfg['model']['main'],'model_gateway':self.cfg['model']['base_url'],'memory_count':len(self.memory.query(self.person,limit=100000)),'last_spoke':spoken[-1]['ts'] if spoken else None,'weights':self.growth.weights,'queue':self.queue.qsize(),'busy':self.busy,'diary_count':len(self.diary.recent(30))}
+        spoken=[r for r in self.store.read('chat') if r['role']=='assistant'] + self.store.tail('group_spoken',1)
+        spoken.sort(key=lambda r:r['ts'])
+        return {'name':NAME,'app_id':APP_ID,'version':VERSION,'time':self.localtime().isoformat(),'mode':self.safety.mode,'groups_muted':self.safety.groups_muted,'qq_enabled':self.cfg['qq']['enabled'],'qq_connected':self.qq.connected,'qq_online':self.qq.online,'qq_bot_id':self.qq.bot_id,'qq_last_event':self.qq.last_event,'model':self.cfg['model']['main'],'model_gateway':self.cfg['model']['base_url'],'memory_count':len(self.memory.query(self.person,limit=100000)),'last_spoke':spoken[-1]['ts'] if spoken else None,'weights':self.growth.weights,'queue':self.queue.qsize(),'busy':self.busy or self.group_chat.busy,'group_queue':self.group_chat.queue.qsize(),'diary_count':len(self.diary.recent(30))}

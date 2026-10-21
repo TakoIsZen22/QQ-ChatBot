@@ -1,9 +1,10 @@
 'use strict';
-// Independent QQNT adapter. No passwords, saved-account discovery or auto-login.
+// Independent QQNT adapter; no daily-QQ profile or saved-account discovery.
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const {id} = require('./protocol');
+const {passwordLogin} = require('./password_login');
 
 const callbacks = value => new Proxy(value, {get(target, key) {
   if (typeof key !== 'string' || key === 'then') return undefined;
@@ -24,6 +25,8 @@ function initialize(api, policy, driver, report) {
   const login = api.NodeIKernelLoginService.get();
   let session, startup, initializing = false, requested = false;
   let stopped = false, authenticated = null, messageReady = false;
+  const password = passwordLogin(login, policy, {report, online: () => stopped || driver.online,
+    initializing: () => initializing});
   const invalidate = (phase, codes = {}) => {
     if (stopped) return;
     driver.offline();
@@ -38,6 +41,7 @@ function initialize(api, policy, driver, report) {
   };
   const attach = value => {
     if (stopped) return;
+    password.clear();
     // Validate before creating an account session. A scanned owner/stranger never attaches.
     driver.login(value);
     if (!driver.online) {report({phase: 'account_mismatch', online: false});return;}
@@ -80,9 +84,9 @@ function initialize(api, policy, driver, report) {
   login.initConfig({machineId: '', appid, platVer: system, commonPath: global,
     clientVer: version, hostName: os.hostname(), externalVersion: false});
   login.addKernelLoginListener(callbacks({
-    onLoginConnected() {if (!requested && !driver.online && !stopped) qr();},
+    onLoginConnected() {if (!requested && !driver.online && !stopped && !password.waiting()) qr();},
     onQRCodeGetPicture(value) {
-      if (stopped || initializing || driver.online) return;
+      if (stopped || initializing || driver.online || password.waiting()) return;
       const encoded = value?.pngBase64QrcodeData;
       if (typeof encoded !== 'string' || encoded.length > 2097152) {invalidate('invalid_qrcode');return;}
       const png = Buffer.from(encoded.replace(/^data:image\/png;base64,/, ''), 'base64');
@@ -91,21 +95,24 @@ function initialize(api, policy, driver, report) {
       fs.writeFileSync(file + '.tmp', png); fs.renameSync(file + '.tmp', file);
       report({phase: 'waiting_qrcode', online: false});
     },
-    onQRCodeSessionUserScaned() {if (!stopped) report({phase: 'qrcode_scanned', online: false});},
+    onQRCodeSessionUserScaned() {if (!stopped && !password.waiting() && !initializing && !driver.online) report({phase: 'qrcode_scanned', online: false});},
     onQRCodeSessionFailed(type, code) {
+      if (password.waiting() || initializing || driver.online || stopped) return;
       requested = false;
       invalidate(type === 1 && code === 3 ? 'qrcode_expired' : 'login_failed',
         {error_type: Number.isInteger(type) ? type : -1, error_code: Number.isInteger(code) ? code : -1});
     },
     onQRCodeLoginSucceed: attach,
-    onLoginFailed() {requested = false; invalidate('login_failed');},
+    onLoginFailed() {requested = false;if (password.waiting()) password.failed();else invalidate('login_failed');},
+    onPasswordLoginFailed() {if (!stopped && !initializing && !driver.online) password.failed();},
     // QR transport closes when ownership passes to the account session.
-    onLoginDisConnected() {if (!initializing) {requested = false;invalidate('offline');}},
+    onLoginDisConnected() {if (!initializing && !password.waiting()) {requested = false;invalidate('offline');}},
     onLogoutSucceed() {authenticated = null;messageReady = false;requested = false; invalidate('offline');},
   }));
   report({phase: 'connecting', online: false});
   login.connect();
-  return {engine, login, refresh() {if (initializing) return false; requested = false; return qr();},
-    stop() {stopped = true;driver.offline();}, profile, global, account};
+  return {engine, login, password: body => password.action(body),
+    refresh() {if (initializing || stopped) return false;password.clear();requested = false;return qr();},
+    stop() {stopped = true;password.clear();driver.offline();}, profile, global, account};
 }
 module.exports = {initialize, callbacks};

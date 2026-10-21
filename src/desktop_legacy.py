@@ -13,6 +13,7 @@ from .core.config import ROOT,load
 from .core.desktop_backend import DesktopBackend
 from .core.instance import InstanceLock
 from .core.identity import installed_identity
+from .core.local_account import LocalAccount
 
 BG='#f3f8fb';INK='#173c52';BLUE='#127ea7'
 
@@ -20,6 +21,8 @@ class DesktopApp:
     def __init__(self,root,backend=None,auto_start=True):
         self.root=root;self.backend=backend or DesktopBackend();self.events=queue.Queue()
         self.cfg=load()
+        if LocalAccount(ROOT,self.cfg['account']).status()['configured']:
+            raise PermissionError('本机账号已启用，请从 QQ ChatBot 正式桌面入口登录；备用界面不支持账号登录')
         self.identity=installed_identity(ROOT);self.nickname=self.identity.profile()['nickname']
         self.polling=False;self.last_chat=None;self.qr_image=None;self.qr_stamp=None;self.closed=False
         root.title(self.identity.title()+' · 备用界面');root.geometry('1080x760');root.minsize(820,610);root.configure(bg=BG)

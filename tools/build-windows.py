@@ -55,7 +55,7 @@ def main():
     check='import sys,aiohttp,webview,clr,pystray,PIL,tzdata;from src.core.config import load;assert not load()["qq"]["enabled"];print(sys.version.split()[0])'
     env=os.environ.copy();env['PYTHONDONTWRITEBYTECODE']='1';env['PYTHONUTF8']='1'
     subprocess.run([str(stage/'_runtime/python.exe'),'-B','-c',check],cwd=stage,env=env,check=True)
-    (stage/'开始使用.txt').write_text('QQ ChatBot\n\n双击 QQ ChatBot.exe，在向导中配置模型后可使用本机聊天。\n向导可下载固定官方 QQ 内核并扫码；不会自动解除暂停。真实收发需在本次安装确认。\n完整教程：docs/GETTING_STARTED.md；QQ 进度：docs/QQ_SETUP.md（也可在程序内阅读）。\n请完整解压，不要只复制 EXE；不要放在 Program Files 或压缩包中运行。\n本包不含账号、密钥、聊天或 QQ 登录态。\n',encoding='utf-8-sig')
+    (stage/'开始使用.txt').write_text('QQ ChatBot\n\n双击 QQ ChatBot.exe，在向导中配置模型后可使用本机聊天。\n向导可准备官方 QQ 内核，提供扫码与账密入口；记住密码和自动登录由你自选。\n真实账密与安全验证待使用者验收；不会自动解除暂停，真实收发需在本次安装确认。\n完整教程：docs/GETTING_STARTED.md；QQ 进度：docs/QQ_SETUP.md（也可在程序内阅读）。\n请完整解压，不要只复制 EXE；不要放在 Program Files 或压缩包中运行。\n本包不含账号、密钥、聊天或 QQ 登录态。\n',encoding='utf-8-sig')
     files={p.relative_to(stage).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(stage.rglob('*')) if p.is_file() and p.name!='manifest.json'}
     manifest={'schema':'qq-chatbot.windows-release.v1','version':v,'python':cfg['python']['version'],'files':files}
     (stage/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

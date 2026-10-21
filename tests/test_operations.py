@@ -55,6 +55,7 @@ class ReconnectTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(r.headers.get('X-QQ-ChatBot'),'1')
                 stream=web.StreamResponse(headers={'Content-Type':'application/x-ndjson'})
                 await stream.prepare(r);count+=1
+                await stream.write((json.dumps({'meta_event_type':'heartbeat','status':{'online':True}})+'\n').encode())
                 await stream.write((json.dumps({'post_type':'message','message_type':'private','message_id':1,'user_id':123,'time':1,'message':'重复上报'})+'\n').encode())
                 if count>=2:ready.set()
                 await asyncio.sleep(.03);await stream.write_eof();return stream

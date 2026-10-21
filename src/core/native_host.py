@@ -1,6 +1,7 @@
 """Own QQNT host lifecycle. No system QQ search, process-wide kills or auto-login."""
 import ctypes
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -8,9 +9,9 @@ import socket
 import subprocess
 import time
 import uuid
-from functools import lru_cache
 from pathlib import Path
 from .instance import InstanceLock
+from .native_compat import installed_package, profile, verify_client, catalog
 
 
 def atomic(path, value):
@@ -19,29 +20,19 @@ def atomic(path, value):
 
 def _read(path):
     if path.is_symlink() or path.stat().st_size>65536:raise ValueError('原生桥接元数据无效')
-    return json.loads(path.read_text(encoding='utf-8'))
+    return json.loads(path.read_text(encoding='utf-8-sig'))
 
 
-@lru_cache(maxsize=24)
-def _digest(file, size, modified):
-    with Path(file).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
-
-
-def runtime(root):
-    from .qq_native import _package
-    root=Path(root).resolve();compat=_read(root/'config/qq-native-compat.json')
-    package=_package(root);client=package.parents[2]
-    if _read(package).get('version')!=compat['version']:raise ValueError('QQ 版本不匹配，请使用向导下载的固定版本')
+def runtime(root, selected=''):
+    root=Path(root).resolve()
+    package=installed_package(root,selected);client=package.parents[2]
+    compat=profile(root,_read(package).get('version'))
     if client != root/'.runtime/qq-client/versions'/compat['version']:
-        raise ValueError('QQ 目录不符合独立加载器布局，请使用向导准备的固定版本')
+        raise ValueError('QQ 目录不符合独立加载器布局，请使用向导准备的兼容版本')
     if (root/'.runtime/qq-native/installation.json').exists():
         meta=_read(root/'.runtime/qq-native/installation.json')
         if hashlib.sha256(package.read_bytes()).hexdigest()!=meta['original_sha256']:raise ValueError('请先恢复旧实验入口：tools/qq-native.py restore')
-    for relative,expected in compat['sha256'].items():
-        file=client/relative
-        if not file.resolve().is_relative_to(client.resolve()) or any(p.is_symlink() for p in [file,*file.parents]):raise ValueError('QQ 文件不能使用链接')
-        stat=file.stat()
-        if _digest(str(file),stat.st_size,stat.st_mtime_ns)!=expected:raise ValueError('QQ 文件校验失败，拒绝加载；保留当前文件并重新准备官方组件')
+    verify_client(client,compat)
     return client,compat
 
 
@@ -107,14 +98,15 @@ class NativeHost:
         lock=InstanceLock(self.directory/'manager.lock')
         try:
             if self.owned():return {'started':False,'message':'独立 QQ 已运行；需要新二维码时点击刷新二维码'}
-            client,compat=runtime(self.root);host=executable(self.root)
+            client,compat=runtime(self.root,cfg['qq'].get('native_version',''));host=executable(self.root)
             # A foreign process is never killed or adopted because it owns our port.
             with socket.socket() as check:
                 try:check.bind(('127.0.0.1',cfg['qq']['native_port']))
                 except OSError:raise RuntimeError('QQ 桥接端口已占用，未启动；请先检查所属进程') from None
             run_id=uuid.uuid4().hex
             policy={'owner':owner,'bot':bot,'groups':[str(g['group_id']) for g in cfg['group_monitor']['groups'] if g['enabled']],
-                    'port':cfg['qq']['native_port'],'directory':str(self.directory),'client':str(client),'run_id':run_id,'compatibility':compat}
+                    'port':cfg['qq']['native_port'],'directory':str(self.directory),'client':str(client),'run_id':run_id,'compatibility':compat,
+                    'login_token':uuid.uuid4().hex+uuid.uuid4().hex}
             atomic(self.directory/'host-config.json',policy)
             profile=self.directory/'profile/os';(profile/'roaming').mkdir(parents=True,exist_ok=True);(profile/'local').mkdir(exist_ok=True)
             env=os.environ.copy();env.pop('NODE_OPTIONS',None);env.pop('NODE_PATH',None)
@@ -135,6 +127,33 @@ class NativeHost:
             return {'started':True,'message':'内核仍在连接，请刷新状态；不要连续重复启动'}
         finally:lock.close()
 
+    def login(self,body):
+        """Password hashes/challenges use authenticated loopback IPC, never files."""
+        record=self.owned()
+        if not record:raise RuntimeError('请先启动 QQ 接入，再选择账号密码登录')
+        policy=_read(self.directory/'host-config.json')
+        if policy.get('run_id')!=record['run_id'] or not re.fullmatch('[a-f0-9]{64}',policy.get('login_token','')):
+            raise RuntimeError('当前 QQ 进程尚未加载账密登录，请在 QQ 接入窗口手动停止后重新启动')
+        connection=http.client.HTTPConnection('127.0.0.1',policy['port'],timeout=10)
+        try:
+            connection.request('POST','/login_control',json.dumps(body).encode(),
+                {'Content-Type':'application/json','X-QQ-ChatBot':'1','X-QQ-Login':policy['login_token']})
+            response=connection.getresponse();raw=response.read(32769)
+            if response.status==404:raise RuntimeError('当前 QQ 进程使用旧代码，请手动停止 QQ 接入后重新启动')
+            if response.status!=200 or len(raw)>32768:raise RuntimeError('QQ 登录通道暂不可用，请检查后重试')
+            value=json.loads(raw)
+            if value.get('status')!='ok':
+                messages={'already_logged_in':'QQ 已登录，无需再次提交密码','login_busy':'正在登录，请等待结果',
+                    'password_unsupported':'此 QQ 内核不支持密码登录，请改用扫码','login_rate_limited':'尝试过于频繁，请稍后再试',
+                    'challenge_unavailable':'验证已过期或流程已切换，请重新登录',
+                    'login_restart_required':'QQ 内核登录响应超时，请手动停止 QQ 接入再启动后重试',
+                    'native_timeout_do_not_retry':'QQ 未及时响应，请先等待登录状态更新，避免连续重复提交'}
+                raise RuntimeError(messages.get(value.get('message'),'QQ 登录请求未成功，请检查账号与登录状态'))
+            return value['data']
+        except (OSError,http.client.HTTPException,ValueError,KeyError):
+            raise RuntimeError('QQ 登录通道连接失败，请检查接入状态后再试') from None
+        finally:connection.close()
+
     def control(self,action):
         if action not in ('refresh_qr','stop'):raise ValueError('无效的原生桥接命令')
         record=self.owned()
@@ -143,7 +162,7 @@ class NativeHost:
             raise RuntimeError('请先启动独立 QQ')
         atomic(self.directory/'control.json',{'run_id':record['run_id'],'action':action})
         if action=='refresh_qr':return {'message':'已请求新二维码；在线账号无需刷新，掉线后请停止再启动'}
-        timeout=_read(self.root/'config/qq-native-compat.json')['limits']['stop_timeout_seconds']
+        timeout=catalog(self.root)['limits']['stop_timeout_seconds']
         deadline=time.monotonic()+timeout
         while time.monotonic()<deadline:
             if not self.owned():return {'message':'独立 QQ 已停止，登录文件保留；其他 QQ 未受影响'}

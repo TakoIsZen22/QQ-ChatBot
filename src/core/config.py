@@ -56,8 +56,16 @@ def validate(c):
         if isinstance(value,list):
             for v in value:finite(v)
     finite(c)
+    account=c['account']
+    for key,minimum,maximum in (('session_seconds',60,604800),('remember_days',1,90),('max_failures',1,20),('failure_window_seconds',60,86400),('lockout_seconds',30,86400)):
+        if type(account[key]) is not int or not minimum<=account[key]<=maximum:raise ValueError('本机账号参数无效: '+key)
+    if type(account['lock_on_hide']) is not bool:raise ValueError('隐藏锁定开关必须为布尔值')
     from ..modules.group_monitor import validate_monitor
     validate_monitor(c['group_monitor'])
+    group_chat=c['group_chat']
+    for key,minimum,maximum in (('context_messages',0,40),('queue_size',1,50),('cooldown_seconds',5,3600),('max_event_age_seconds',10,300),('max_reply_chars',50,2000)):
+        if type(group_chat[key]) is not int or not minimum<=group_chat[key]<=maximum:raise ValueError('群聊参数无效: '+key)
+    if not isinstance(group_chat['public_prompt'],str) or len(group_chat['public_prompt'])>2000:raise ValueError('默认公开群人设限 2000 字')
     identity=c['identity']
     for key,maximum in (('max_nickname_chars',80),('max_appearance_chars',12000),('max_image_bytes',2097152),('max_pixels',32000000),('portrait_edge',2048),('icon_edge',256)):
         if type(identity[key]) is not int or not 1<=identity[key]<=maximum:raise ValueError('角色定制限制无效: '+key)
@@ -78,6 +86,9 @@ def validate(c):
     if c['qq']['enabled'] and (not str(c['qq']['bot_id']).isdigit() or str(c['qq']['bot_id'])==str(c['owner']['qq_id'])):
         raise ValueError('启用 QQ 需要与主人不同的机器人 QQ 号')
     native_port=c['qq']['native_port']
+    version=c['qq']['native_version']
+    if not isinstance(version,str) or (version and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}',version)):
+        raise ValueError('QQ 运行版本标识无效')
     if type(native_port) is not int or not 1024<=native_port<=65535 or native_port in (3425,c['server']['port']):
         raise ValueError('原生桥接实验端口无效或冲突')
     d=c['desktop']

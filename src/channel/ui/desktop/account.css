@@ -1,0 +1,15 @@
+body.account-pending>.app-shell,body.account-pending>dialog,body.account-pending>.sidebar{display:none!important}
+.account-gate{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:32px;background:var(--surface-subtle);color:var(--ink);overflow:auto}
+.account-gate[hidden]{display:none}
+.account-card{width:min(420px,100%);padding:36px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 70px #16284d12}
+.account-brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:1px;font-size:16px;margin-bottom:32px}
+.account-brand img{width:42px;height:42px;border-radius:10px;object-fit:contain}
+.account-card h1{font-size:25px;margin:0 0 10px}.account-card p,.account-dialog p{color:var(--text-secondary);line-height:1.8;font-size:12px}
+.account-fields{display:grid;gap:16px;margin:24px 0 16px}.account-fields label{display:grid;gap:8px;font-size:12px;color:var(--text-secondary)}
+.account-fields input{width:100%;background:var(--surface-subtle);color:var(--ink);border:1px solid var(--line);padding:12px;border-radius:9px;outline:none}.account-fields input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #5478e520}
+.account-submit{width:100%;margin-top:8px;padding:13px}.account-error{min-height:20px;color:#b34e66;font-size:12px;line-height:1.6;white-space:pre-wrap}
+.account-foot{display:flex;justify-content:space-between;gap:12px;margin-top:25px}.account-foot button{font-size:11px;color:var(--text-secondary);background:none;border:0;padding:4px}
+.account-note{margin:22px 0 0;font-size:11px!important}.account-dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:15px;padding:28px;width:450px;max-width:90vw}.account-dialog::backdrop{background:#10182a77}.account-dialog h2{margin:0 0 8px;font-size:19px}
+.account-panel-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.account-options{display:flex;gap:24px;flex-wrap:wrap;margin:14px 0;color:var(--text-secondary);font-size:12px}.account-options[hidden]{display:none}.account-options label{display:flex;align-items:center;gap:7px;cursor:pointer}.account-options input{accent-color:var(--blue);width:15px;height:15px}
+@media(prefers-color-scheme:dark){html:not([data-theme]) .account-gate{--surface:#192337;--surface-subtle:#101827;--ink:#d9e3f4;--text-secondary:#a6b5ce;--line:#2b3a54}}

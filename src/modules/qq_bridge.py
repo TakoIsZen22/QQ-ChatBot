@@ -4,11 +4,14 @@ import aiohttp
 
 class QQBridge:
     """自写 QQ 本机网关：HTTP 动作和有界 NDJSON 事件流。"""
-    ACTIONS = {'get_login_info','send_private_msg','get_status'}
-    def __init__(self, cfg, owner, session, store, log, receive, safety, group_monitor=None):
+    ACTIONS = {'get_login_info','send_private_msg','send_group_msg','configure_groups','get_status'}
+    def __init__(self, cfg, owner, session, store, log, receive, safety, group_monitor=None, group_receive=None):
         self.cfg, self.owner, self.session, self.store, self.log = cfg, str(owner), session, store, log
         self.receive, self.safety = receive, safety
         self.group_monitor = group_monitor
+        self.group_receive = group_receive
+        self.group_policy_synced = False
+        self._group_sync_lock = asyncio.Lock()
         self.connected = False
         self.online = False
         self.bot_id = None
@@ -45,15 +48,46 @@ class QQBridge:
         await self.action('send_private_msg', {'user_id':int(self.owner), 'message':[{'type':'text','data':{'text':text}}]})
         return True
 
+    async def sync_groups(self):
+        async with self._group_sync_lock:
+            return await self._sync_groups()
+
+    async def _sync_groups(self):
+        self.group_policy_synced = False
+        if not self.connected or not self.online or not self.group_monitor:return False
+        groups = [dict(group_id=g['group_id'], reply_enabled=g.get('reply_enabled', False))
+                  for g in self.group_monitor.cfg['groups'] if g['enabled']]
+        try:
+            result = await self.action('configure_groups', {'groups': groups, 'group_per_minute': self.safety.cfg['group_per_minute']})
+            current = [dict(group_id=g['group_id'], reply_enabled=g.get('reply_enabled', False))
+                       for g in self.group_monitor.cfg['groups'] if g['enabled']]
+            self.group_policy_synced = isinstance(result, dict) and result.get('configured') is True and current == groups
+        except Exception as error:
+            self.log('WARN', 'qq_group_policy_pending', raw=str(error))
+        return self.group_policy_synced
+
+    async def send_group(self, ident, text, generation):
+        def enabled():
+            return (self.connected and self.online and self.group_policy_synced and self.group_monitor
+                    and any(g['group_id'] == ident and g['enabled'] and g.get('reply_enabled', False) for g in self.group_monitor.cfg['groups'])
+                    and self.safety.allowed(group=True, generation=generation))
+        if not enabled():return False
+        if not await self.safety.acquire('group:'+ident, generation, group=True):return False
+        if not enabled():return False
+        await self.action('send_group_msg', {'group_id': ident, 'message': [{'type': 'text', 'data': {'text': text}}]})
+        return True
+
     async def ingest(self, event, historical=False):
         self.last_event = event.get('time',self.last_event)
         if event.get('meta_event_type')=='heartbeat':
-            self.online=event.get('status',{}).get('online',False)
+            self.online=event.get('status',{}).get('online') is True
             return
-        # 群事件走独立被动监听，绝不进入主人对话、模型或工作转交。
+        # 群事件走独立监听/群对话，绝不进入主人 receive/记忆或工具。
         if event.get('post_type') == 'message' and event.get('message_type') == 'group':
             if self.group_monitor:
-                self.group_monitor.ingest(event)
+                fresh = self.group_monitor.ingest(event)
+                if fresh and self.group_receive and self.group_policy_synced:
+                    await self.group_receive(event, self.bot_id, historical=historical)
             return
         # request / 非主人事件均不进入核心，绝不自动同意请求。
         if event.get('post_type') == 'request':
@@ -88,29 +122,48 @@ class QQBridge:
                         timeout=aiohttp.ClientTimeout(total=None,sock_connect=5,sock_read=45),read_bufsize=262144) as stream:
                     if stream.status!=200 or stream.content_type!='application/x-ndjson':raise RuntimeError('QQ 事件流无效')
                     self.connected = True
-                    info=await self.action('get_login_info',{})
-                    self.bot_id=str(info['user_id'])
-                    if self.bot_id==self.owner:raise ValueError('主人 QQ 号不能与机器人登录账号相同')
-                    if self.cfg.get('bot_id') and self.bot_id!=str(self.cfg['bot_id']):raise ValueError('当前 QQ 账号与配置的 bot_id 不符，拒绝接入')
-                    status=await self.action('get_status',{})
-                    self.online=bool(status.get('online'))
-                    self.log('INFO','qq_connected')
-                    # 连接之后仍由核心按 ID 去重；不伪造未支持的离线历史。
-                    await self.catchup()
+                    self.online = False
+                    self.log('INFO','qq_gateway_connected')
+                    # The stream exists before QR login. Keep it open while waiting;
+                    # querying login_info here used to fail and back off for a minute.
                     delay = self.cfg['reconnect_min_seconds']
                     async for line in stream.content:
                         if len(line)>262144:raise ValueError('QQ 事件过大')
                         if line.strip():
                             event=json.loads(line)
                             if not isinstance(event,dict):raise ValueError('QQ 事件格式无效')
-                            await self.ingest(event)
+                            if event.get('meta_event_type')=='heartbeat':
+                                if self.online and event.get('status',{}).get('online') is not True:
+                                    self.log('WARN','qq_offline')
+                                    self.bot_id=None
+                                if event.get('status',{}).get('online') is True and not self.online:
+                                    info=await self.action('get_login_info',{})
+                                    bot_id=str(info['user_id'])
+                                    if bot_id==self.owner:raise ValueError('主人 QQ 号不能与机器人登录账号相同')
+                                    if self.cfg.get('bot_id') and bot_id!=str(self.cfg['bot_id']):raise ValueError('当前 QQ 账号与配置的 bot_id 不符，拒绝接入')
+                                    self.bot_id=bot_id
+                                    self.log('INFO','qq_connected')
+                                    self.online=True
+                                    await self.sync_groups()
+                                    await self.catchup()
+                                await self.ingest(event)
+                            elif self.online:
+                                # Never route messages until this stream's account is verified.
+                                await self.ingest(event)
             except asyncio.CancelledError:
                 raise
+            except aiohttp.ClientConnectorError as e:
+                # A manually started local host should be discovered on the next
+                # normal retry, even if the chat core has been running for hours.
+                delay = self.cfg['reconnect_min_seconds']
+                self.log('ERROR','qq_connection_error', raw=str(e))
             except Exception as e:
                 self.log('ERROR','qq_connection_error', raw=str(e))
             finally:
                 self.connected = False
                 self.online = False
+                self.bot_id = None
+                self.group_policy_synced = False
                 self.log('WARN','qq_disconnected')
             try:
                 await asyncio.wait_for(self.stop.wait(), timeout=delay)

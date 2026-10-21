@@ -1,4 +1,4 @@
-"""Build 1.00.01 API-only and 1.00.02 API + optional Magpie distributions."""
+"""Build the current feature version's API-only and optional Magpie editions."""
 import argparse
 import json
 import shutil
@@ -19,8 +19,8 @@ def main():
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
     versions=VERSIONS if args.edition=='all' else (args.edition,)
-    if release_version(root)=='1.00.01' and '1.00.02' in versions:
-        raise ValueError('构建两版请使用 1.00.02 主源码；此专属源码请加 --edition 1.00.01')
+    if release_version(root)==VERSIONS[0] and VERSIONS[1] in versions:
+        raise ValueError('构建两版请使用 '+VERSIONS[1]+' 主源码；此专属源码请加 --edition '+VERSIONS[0])
     suffixes=('.zip',) if args.source_only else ('.zip','-windows-x64.zip')
     for version in versions:
         for suffix in suffixes:

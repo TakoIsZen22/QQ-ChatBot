@@ -80,7 +80,11 @@ class DesktopLifecycle:
 
     def _hide(self):
         if self.window and not self._quit:
-            try:self.window.hide()
+            try:
+                if load()['account']['lock_on_hide'] and self.api._signed_in() and self.api.account()['configured']:
+                    self.api.account('lock')
+                    self.window.evaluate_js('location.reload()')
+                self.window.hide()
             except Exception:pass
 
     def _allow_windows_shutdown(self,sender,args):
@@ -133,7 +137,7 @@ class DesktopLifecycle:
             self.apply_identity()
         except Exception as e:self.report_error('角色外观应用失败：'+str(e))
         if startup and not self.tray_available:self.window.show()
-        if load()['desktop']['auto_start_services']:
+        if load()['desktop']['auto_start_services'] and self.api._signed_in():
             try:self.api.command('start')
             except Exception as e:self.report_error(str(e))
         threading.Thread(target=self._supervise,daemon=True).start()

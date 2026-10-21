@@ -34,6 +34,10 @@ class FakeBackend:
 @unittest.skipIf(tk is None,'当前 Python 不含 tkinter（绿色包运行时），跳过旧桌面界面测试')
 class DesktopTests(unittest.TestCase):
     def setUp(self):
+        # The fixture must not read the user's real local-account lock.
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        isolation=patch('src.desktop_legacy.LocalAccount',return_value=Mock(status=Mock(return_value={'configured':False})))
+        isolation.start();self.addCleanup(isolation.stop)
         self.root=tk.Tk();self.root.withdraw();self.backend=FakeBackend()
         self.app=DesktopApp(self.root,self.backend,auto_start=False)  # type: ignore[arg-type]
         self.addCleanup(lambda:self.app.close() if not self.app.closed else None)

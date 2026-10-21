@@ -1,4 +1,4 @@
-"""隔离 WebView2 群监听验收；协议夹具，不连接真实 QQ、不发消息或调用模型。"""
+"""隔离 WebView2 群聊验收；模型与 QQ 均为本机夹具，不访问真实服务。"""
 import asyncio
 import copy
 import json
@@ -39,7 +39,21 @@ def serve(run):
             async def forbidden(*args, **kw):
                 (ROOT / run / 'forbidden-called').touch(); raise AssertionError('监听不应调用外部能力')
 
-            h.model.complete = h.qq.action = forbidden
+            async def action(name, params):
+                if name == 'configure_groups':return {'configured':True}
+                if name == 'send_group_msg':
+                    h.store.append('fixture_sends',group_id=params['group_id'])
+                    return {'accepted':True}
+                return await forbidden()
+
+            async def model(messages, **kw):
+                assert not kw and '私人测试标记' not in str(messages)
+                h.store.append('fixture_models',called=True)
+                return {'content':'隔离群回复成功'}
+
+            h.model.complete, h.qq.action = model, action
+            h.qq.bot_id = '54321'
+            h.workers.append(asyncio.create_task(h.group_chat.run()))
 
             async def fixture(request):
                 a = await request.json()
@@ -121,11 +135,12 @@ def refresh():
     time.sleep(.35)
 
 
-def inject(ident, mid, text):
+def inject(ident, mid, text, mention=False):
+    parts = [{'type':'text','data':{'text':text}}, {'type':'image','data':{'url':'https://never-download.invalid'}}]
+    if mention:parts.insert(0,{'type':'at','data':{'qq':'54321'}})
     backend.request('fixture-group', {'event': {'post_type': 'message', 'message_type': 'group', 'group_id': ident,
                     'message_id': mid, 'user_id': '33333', 'sender': {'card': '群成员甲', 'user_id': '33333'},
-                    'time': 1792496100, 'message': [{'type': 'text', 'data': {'text': text}},
-                                                  {'type': 'image', 'data': {'url': 'https://never-download.invalid'}}]}})
+                    'time': time.time(), 'message': parts}})
 
 
 def check():
@@ -133,6 +148,9 @@ def check():
         window.events.loaded.wait(20)
         until('!!window.DFY?.state.cfg && !!window.GroupMonitorUI')
         js("document.querySelector('[data-nav=groups]').click()")
+        js("document.querySelector('[data-guide=groups]').click()")
+        until("document.querySelector('#guide-dialog').open && document.querySelector('#guide-content').textContent.includes('默认仅监听')")
+        js("document.querySelector('#guide-close').click()")
         until("document.querySelector('#group-connection').textContent.includes('QQ 已连接')")
         for ident, name in (('11111', '游戏群'), ('22222', '学习群')):
             js("document.querySelector('#group-add').click()")
@@ -148,6 +166,23 @@ def check():
         assert '学习群独立消息' not in js("document.querySelector('[data-group-id=\"11111\"] .group-message-list').textContent")
         assert not js('!!window.pwned')
         assert not js("document.querySelector('#group-windows').textContent.includes('未订阅消息')")
+        assert not (ROOT / run / 'data/fixture_models.jsonl').exists()
+        assert not (ROOT / run / 'data/fixture_sends.jsonl').exists()
+        # 显式开启本群回复、填写公开人设，再解除隔离夹具的群静音。
+        js("document.querySelector('[data-group-id=\"22222\"] .group-pane-tools .text-button').click()")
+        js("document.querySelector('#group-reply-enabled').checked=true;document.querySelector('#group-public-prompt').value='公开群设定';document.querySelector('#group-form').requestSubmit()")
+        until("!document.querySelector('#group-dialog').open && document.querySelector('#group-safety-status').textContent.includes('配置已同步')")
+        js("document.querySelector('#group-mute').click()")
+        until("document.querySelector('#group-mute').textContent.includes('一键群静音')")
+        inject('22222','reply1','群回复验收',mention=True);refresh()
+        until("document.querySelector('[data-group-id=\"22222\"] .group-message-list').textContent.includes('隔离群回复成功') && document.querySelector('[data-group-id=\"22222\"] footer').textContent.includes('已回复')")
+        assert '隔离群回复成功' not in js("document.querySelector('[data-group-id=\"11111\"] .group-message-list').textContent")
+        js("document.querySelector('[data-group-id=\"22222\"] .group-pane-tools button:nth-child(3)').click()")
+        until("document.querySelector('#group-reset-dialog').open")
+        js("document.querySelector('#group-reset-confirm').click()")
+        until("!document.querySelector('#group-reset-dialog').open && document.querySelector('[data-group-id=\"22222\"] footer').textContent.includes('上下文已重置')")
+        js("document.querySelector('#group-mute').click()")
+        until("document.querySelector('#group-mute').textContent.includes('允许群回复')")
         # 备注编辑、停用后不采集；全局全部暂停只限制输出，不触发监听副作用。
         js("document.querySelector('[data-group-id=\"11111\"] .group-pane-tools .text-button').click()")
         js("document.querySelector('#group-name').value='游戏与闲聊';document.querySelector('#group-form').requestSubmit()")
@@ -162,11 +197,13 @@ def check():
         from System.Drawing import Size
         from System.IO import FileStream, FileMode
         from Microsoft.Web.WebView2.Core import CoreWebView2CapturePreviewImageFormat
+        js("document.querySelector('#toast-region').replaceChildren()")
         window.native.Invoke(Action(lambda: window.native.Show()))
         for theme in ('light', 'dark'):
             js('window.SystemUI.appearance(' + json.dumps(dict(cfg['desktop'], theme=theme)) + ')'); time.sleep(.3)
             assert not js('document.documentElement.scrollWidth>innerWidth+2')
             assert js("getComputedStyle(document.querySelector('.group-pane')).backgroundColor===getComputedStyle(document.querySelector('.panel')).backgroundColor")
+            assert js("[...document.querySelectorAll('.group-pane-tools')].every(e=>e.scrollWidth<=e.clientWidth+2)")
             control = window.native.webview; stream = FileStream(str(ROOT / run / f'group-monitor-{theme}.png'), FileMode.Create)
             try:
                 task = control.Invoke(Func[Object](lambda: control.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream)))
@@ -186,9 +223,13 @@ def check():
         assert not (ROOT / run / 'forbidden-called').exists()
         assert not (ROOT / run / 'data/chat.jsonl').exists()
         result.update(ok=True, multi_window=True, single_switch=True, whitelist=True, scope_isolation=True,
-                      edit_and_disable=True, remove_retains_history=True, no_model_or_send=True,
+                      edit_and_disable=True, remove_retains_history=True, passive_no_model_or_send=True,
+                      opt_in_fixture_reply=True, public_prompt=True, context_reset=True, group_mute=True,
                       html_is_text=True, offline_status=True, light_dark_and_narrow=True)
-    except Exception as error:result['error'] = str(error)
+    except Exception as error:
+        result['error'] = str(error)
+        try:result['ui'] = js("JSON.stringify({dialog:document.querySelector('#group-dialog').open,windows:document.querySelector('#group-windows').textContent,toasts:document.querySelector('#toast-region').textContent})")
+        except Exception:pass
     finally:window.destroy()
 
 

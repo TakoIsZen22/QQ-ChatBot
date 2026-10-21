@@ -5,6 +5,7 @@ const {NativeDriver} = require('./driver');
 const {gateway} = require('./gateway');
 const {initialize} = require('./session');
 const {id} = require('./protocol');
+const {resolveCompatibility} = require('./compatibility');
 
 async function start(configFile) {
   const policy = JSON.parse(fs.readFileSync(configFile, 'utf8'));
@@ -14,12 +15,9 @@ async function start(configFile) {
       !id(policy.owner) || !id(policy.bot) || policy.owner === policy.bot ||
       !Array.isArray(policy.groups) || policy.groups.some(x => !id(x)) ||
       !Number.isInteger(policy.port) || policy.port < 1024 || policy.port > 65535) throw new Error('invalid_policy');
-  const compat = JSON.parse(fs.readFileSync(path.join(root, 'config/qq-native-compat.json'), 'utf8'));
-  if (policy.compatibility.version !== compat.version || process.versions.node !== compat.node || process.versions.v8 !== compat.v8) throw new Error('unsupported_runtime');
+  const compat = resolveCompatibility(JSON.parse(fs.readFileSync(path.join(root, 'config/qq-native-compat.json'), 'utf8')), policy, process.versions, root);
   policy.compatibility = compat;
-  const client = path.resolve(root,'.runtime/qq-client/versions',compat.version);
-  if (path.resolve(policy.client) !== client) throw new Error('invalid_runtime_path');
-  let bridge, lastPhase;
+  let bridge, lastPhase, session;
   const report = value => {
     const record = {schema: 'qq-chatbot.native.v2', run_id: policy.run_id, ...value, time: new Date().toISOString()};
     fs.writeFileSync(path.join(directory, 'state.tmp'), JSON.stringify(record));
@@ -30,12 +28,15 @@ async function start(configFile) {
     }
   };
   const driver = new NativeDriver(policy, event => bridge?.emit(event), report);
-  bridge = gateway(driver, policy);
+  bridge = gateway(driver, policy, body => {
+    if (!session) throw Error('not_ready');
+    return session.password(body);
+  });
   await bridge.listen(); // Port must be exclusively ours before a native login begins.
   report({phase: 'loading_kernel', online: false});
   const native = {exports: {}};
   process.dlopen(native, path.join(policy.client, 'resources/app/wrapper.node'));
-  const session = initialize(native.exports, policy, driver, report);
+  session = initialize(native.exports, policy, driver, report);
   const requests = path.join(directory, 'control.json');
   const timer = setInterval(() => {
     try {

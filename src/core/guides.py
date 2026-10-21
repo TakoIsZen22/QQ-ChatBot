@@ -4,7 +4,8 @@ from pathlib import Path
 
 GUIDES={'start':('QQ ChatBot 新手使用教程','docs/GETTING_STARTED.md',None),
         'magpie':('Magpie 接入教程（可选）','docs/MAGPIE_SETUP.md','docs/assets/magpie-quickstart.svg'),
-        'api':('自有 API 接入说明','docs/MODEL_API.md',None)}
+        'api':('自有 API 接入说明','docs/MODEL_API.md',None),
+        'groups':('群聊监听与回复教程','docs/GROUP_MONITOR.md',None)}
 
 
 def read_guide(root,name):
@@ -19,4 +20,4 @@ def read_guide(root,name):
         return path.read_bytes()
     return {'title':title,'text':read(document).decode('utf-8-sig').replace('\r\n','\n').replace('\r','\n'),
             'image_data':'data:image/svg+xml;base64,'+base64.b64encode(read(illustration)).decode() if illustration else None,
-            'file_target':{'start':'getting_started','magpie':'magpie_guide','api':'model_api_guide'}[name]}
+            'file_target':{'start':'getting_started','magpie':'magpie_guide','api':'model_api_guide','groups':'group_guide'}[name]}

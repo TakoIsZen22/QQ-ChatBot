@@ -3,13 +3,13 @@ let identity=null;
 function characterName(){return identity?.nickname||'大肥鱼'}
 async function refreshIdentity(){const data=await api('identity'+(identity?'?revision='+encodeURIComponent(identity.revision):''));if(data.unchanged)return;identity=data;lastChat='';$('#character-name').textContent=data.nickname;document.title=data.window_title||'QQ ChatBot';$('#input').placeholder='和'+data.nickname+'说句话…（Enter 发送，Shift+Enter 换行）';if(data.icon_data)document.querySelector('link[rel="icon"]').href=data.icon_data;if(data.portrait_data)$('#character-avatar').src=data.portrait_data}
 function notice(s){$('#notice').textContent=s}
-async function api(path,body){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-Harness-Local':'1'},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||r.status);return data}
+async function api(path,body){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-Harness-Local':'1'},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();if(r.status===401){location.reload();throw Error("请先登录本机账号")}if(!r.ok)throw Error(data.error||r.status);return data}
 function pretty(data){return JSON.stringify(data,null,2)}
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
 async function safe(fn){try{await fn()}catch(e){notice(e.message)}}
 const titles={chat:'今天想聊些什么？',memory:'把重要的事留下来',diary:'她记下的小事',growth:'一点一点，长成自己',tools:'一起探索世界',system:'在本机，安心运行'};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>safe(async()=>{current=b.dataset.view;document.querySelectorAll('.view').forEach(v=>v.classList.toggle('hidden',v.id!==current));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('selected',x===b));$('#heading').textContent=titles[current];await refresh()}));
-async function refresh(){const s=await api('status');$('#mode').textContent={paused:'已暂停',reply_only:'只回复',active:'允许主动'}[s.mode];$('#mode').title=s.model||'未配置模型';
+async function refresh(){const s=await api('status');if(s.account_authenticated===false){document.body.replaceChildren();location.reload();return}$('#mode').textContent={paused:'已暂停',reply_only:'只回复',active:'允许主动'}[s.mode];$('#mode').title=s.model||'未配置模型';
 await refreshIdentity();
 if(s.model){$('#chat .hint').textContent='当前模型：'+s.model+' · 本机与 QQ 共用当前主人的记忆。';const empty=$('#messages .empty span');if(empty)empty.textContent='模型已接好，聊第一句话吧。'}
 if(current==='chat'){const rows=await api('chat');const hash=JSON.stringify(rows);if(hash!==lastChat){lastChat=hash;const box=$('#messages');box.replaceChildren();if(!rows.length){const e=node('div','◒ '+characterName()+'在这里','empty');e.append(node('span','先把模型接好，再聊第一句话吧。'));box.append(e)}for(const r of rows){const e=node('div',undefined,'bubble '+r.role);e.append(node('small',r.role==='user'?'你':characterName()));e.append(document.createTextNode(r.content));box.append(e)}box.scrollTop=box.scrollHeight}}
@@ -27,3 +27,5 @@ const configPanel=node('article');configPanel.append(node('h2','本机配置'));
 const loadConfig=node('button','读取配置'),saveConfig=node('button','保存配置（重启后生效）'),configText=node('textarea');configText.rows=18;configText.style.width='100%';configText.setAttribute('aria-label','统一配置 JSON');
 configPanel.append(loadConfig,configText,saveConfig);$('#system').append(configPanel);
 loadConfig.onclick=()=>safe(async()=>{configText.value=pretty(await api('config'))});saveConfig.onclick=()=>safe(async()=>{await api('config',JSON.parse(configText.value));notice('配置已保存，请运行 tools/restart.bat。保命开关请用顶部按钮即时操作。')});
+
+fetch("/api/account/status").then(r=>r.json()).then(s=>{if(!s.configured)return;const b=node("button","锁定本机界面");b.onclick=()=>safe(async()=>{await api("account/lock",{});document.body.replaceChildren();location.reload()});document.querySelector("header").append(b)}).catch(()=>{});

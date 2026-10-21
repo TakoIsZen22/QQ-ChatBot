@@ -25,6 +25,14 @@
     "restart_window_seconds": 300,
     "maintenance_timeout_seconds": 180
   },
+  "account": {
+    "session_seconds": 43200,
+    "remember_days": 30,
+    "max_failures": 5,
+    "failure_window_seconds": 900,
+    "lockout_seconds": 300,
+    "lock_on_hide": true
+  },
   "paths": {
     "data": "data",
     "logs": "logs",
@@ -52,6 +60,7 @@
     "enabled": false,
     "bot_id": "",
     "client_path": "",
+    "native_version": "",
     "native_port": 3002,
     "reconnect_min_seconds": 2,
     "reconnect_max_seconds": 60,
@@ -68,6 +77,14 @@
     "max_groups": 12,
     "history_limit": 100,
     "max_text_chars": 2000
+  },
+  "group_chat": {
+    "context_messages": 12,
+    "queue_size": 12,
+    "cooldown_seconds": 15,
+    "max_event_age_seconds": 120,
+    "max_reply_chars": 1000,
+    "public_prompt": "友善、自然地参与群聊，回复简短，不执行工作或管理操作。"
   },
   "safety": {
     "mode": "paused",

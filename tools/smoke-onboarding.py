@@ -71,6 +71,14 @@ class Api(DesktopApi):
     def read_data(self,stream):return []
     def qr(self):return {'state':'expired' if self.qr_phase=='qrcode_expired' else 'unavailable','phase':self.qr_phase,'message':'等待扫码（协议夹具）'}
     def onboarding(self,action='status',body=None):
+        if action=='local_clients':return {'supported_versions':['fixture-compatible'],'clients':[
+            {'index':0,'dir':'C:/QQ/<img src=x onerror=alert(1)>','version':'fixture-unknown','compatible':False,'reason':'尚未适配'},
+            {'index':1,'dir':'C:/QQ/fixture-compatible','version':'fixture-compatible','compatible':True,'reason':'校验通过'}],
+            'message':'本机检测（协议夹具）'}
+        if action=='use_local':
+            assert body=={'index':1}
+            self.local_copy_requested=True
+            return {'message':'复制请求通过（协议夹具）'}
         if action=='save':
             if body['owner_id']==body['bot_id']:raise ValueError('主人和机器人必须不同')
             candidate=copy.deepcopy(cfg);merge(candidate,{'owner':{'name':body['owner_name'],'qq_id':body['owner_id']},'qq':{'enabled':True,'bot_id':body['bot_id']},'model':body['model']});validate(candidate);cfg.update(candidate)
@@ -121,6 +129,15 @@ def check():
         window.evaluate_js("document.querySelector('#setup-form').requestSubmit()")
         until("document.querySelector('#setup-result').textContent.includes('已保存')")
         assert json.loads((ROOT/run/'saved.json').read_text(encoding='utf-8'))['model']['main']=='setup-text'
+        window.evaluate_js("document.querySelector('#setup-detect-local').click()")
+        until("document.querySelector('#setup-local-results').textContent.includes('fixture-unknown')")
+        assert window.evaluate_js("document.querySelectorAll('#setup-local-results [data-use-local]').length")==1
+        assert not window.evaluate_js("document.querySelector('#setup-local-results img')!==null")
+        window.evaluate_js("document.querySelector('#setup-local-results [data-use-local]').click()")
+        until("document.querySelector('#setup-result').textContent.includes('复制请求通过')")
+        assert api.local_copy_requested and not api.started
+        result['local_qq_compatibility_and_safe_text_fixture']=True
+        until("!document.querySelector('#setup-download').disabled")
         window.evaluate_js("document.querySelector('#setup-download').click()")
         until("document.querySelector('#setup-download-state').textContent.includes('已就绪')")
         until("!document.querySelector('#setup-start').disabled")

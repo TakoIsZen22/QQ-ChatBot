@@ -101,6 +101,7 @@ def package_json_of(folder):
     if config.is_file():
         try:
             version = json.loads(config.read_text(encoding='utf-8-sig'))['curVersion']
+            if not isinstance(version, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', version):return None
         except (OSError, ValueError, KeyError):
             return None
         candidate = (folder / 'versions' / version / 'resources' / 'app' / 'package.json')
@@ -123,11 +124,7 @@ def build_id_of(folder):
 
 
 def min_build_id(root=None):
-    """腾讯服务器接受的最低 QQ buildId。
-
-    低于该值的 QQ 会被以 error 45（版本过低）拒绝登录，与是否复用无关，
-    因此在复用前就要拦下来，不要让用户白等一次扫码。
-    """
+    """本地下载清单登记的旧版本提示门槛，不是腾讯实时最低版本承诺。"""
     if root is None:
         from .config import ROOT as root
     try:
@@ -138,7 +135,7 @@ def min_build_id(root=None):
 
 
 def too_old(folder, root=None):
-    """该 QQ 是否低于腾讯可接受的最低 buildId。"""
+    """该 QQ 是否低于本地登记的 buildId 提示门槛。"""
     floor = min_build_id(root)
     if not floor:
         return False
@@ -153,7 +150,7 @@ def detect():
 
     每项含 path（QQ.exe）、dir、version、build_id、package_json、usable、too_old。
     usable 表示该目录具备 版本诊断所需的配套元数据。
-    too_old 表示版本低于腾讯接受的门槛，登录时会被 error 45 拒绝。
+    too_old 仅表示低于本地登记门槛，不能证明腾讯当前会拒绝。
     """
     results = []
     for folder in install_dirs():
@@ -172,10 +169,7 @@ def detect():
 
 
 def find_usable(root=None):
-    """第一个可用的系统 QQ；没有返回 None。
-
-    版本过旧的（会被腾讯 error 45 拒绝）不算可用——复用它只会让用户白扫一次码。
-    """
+    """旧诊断助手：有元数据且不低于本地门槛；不代表原生适配兼容。"""
     for item in detect():
         if item['usable'] and not item['too_old']:
             return item

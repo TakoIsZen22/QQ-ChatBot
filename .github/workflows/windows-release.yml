@@ -6,7 +6,7 @@ on:
       edition:
         description: Model access edition to build
         type: choice
-        options: [all, '1.00.01', '1.00.02']
+        options: [all, api_only, api_magpie]
         default: all
   release:
     types: [published]
@@ -42,18 +42,22 @@ jobs:
           IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           $sourceVersion = python -c "from src.version import VERSION; print(VERSION)"
+          $versions = @(python -c "from src.core.edition import release_versions; from src.version import VERSION; print(*release_versions(VERSION), sep='\n')")
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid source edition' }
           $edition = $env:MANUAL_EDITION
+          if ($edition -eq 'api_only') { $edition = $versions[0] }
+          if ($edition -eq 'api_magpie') { $edition = $versions[1] }
           if ($env:EVENT_NAME -eq 'release' -or $env:IS_TAG -eq 'true') {
-            if ($env:RELEASE_TAG -notmatch '^v(1\.00\.0[12])(?:-r[1-9][0-9]*)?$') { throw 'Invalid edition or revision tag' }
+            if ($env:RELEASE_TAG -notmatch '^v([0-9]+\.[0-9]+\.(?:01|02))(?:-r[1-9][0-9]*)?$') { throw 'Invalid edition or revision tag' }
             $edition = $Matches[1]
           }
-          if ($sourceVersion -eq '1.00.01' -and $edition -ne '1.00.01') { throw 'API-only source cannot build the Magpie edition' }
-          if ($sourceVersion -notin @('1.00.01','1.00.02')) { throw 'Unknown source edition' }
+          if ($edition -ne 'all' -and $edition -notin $versions) { throw 'Tag does not match source feature version' }
+          if ($sourceVersion -eq $versions[0] -and $edition -ne $versions[0]) { throw 'API-only source cannot build the Magpie edition' }
           "edition=$edition" >> $env:GITHUB_OUTPUT
       - name: Test
         run: python -m unittest discover -s tests -q
       - name: Test native QQ protocol
-        run: node --test tests/qq-native.test.js
+        run: node --test tests/*.test.js
       - name: Build Windows and clean source packages
         shell: pwsh
         env:

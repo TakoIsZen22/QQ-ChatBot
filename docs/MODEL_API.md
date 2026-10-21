@@ -1,12 +1,12 @@
 # 模型 API 接入
 
-1.00.01 仅支持自有 OpenAI 兼容 API；1.00.02 支持自有 API 与可选 Magpie。接入能力由版本校验，UI 和后端同时限制；详见 [版本说明](EDITIONS.md)。所有请求共用 `modules/model.py`，记忆、工具白名单、暂停和 QQ 限流保持相同。只会使用已保存并重启生效的地址，不会自动回退到另一个服务。
+1.10.01 仅支持自有 OpenAI 兼容 API；1.10.02 支持自有 API 与可选 Magpie。接入能力由版本校验，UI 和后端同时限制；详见 [版本说明](EDITIONS.md)。所有请求共用 `modules/model.py`，记忆、工具白名单、暂停和 QQ 限流保持相同。只会使用已保存并重启生效的地址，不会自动回退到另一个服务。
 
-自有 API 按本页配置，不需要安装或启动 Magpie。1.00.02 的已有 Magpie 用户可看 [Magpie 五步接入教程（可选）](MAGPIE_SETUP.md)。1.00.01 不含该入口和教程。
+自有 API 按本页配置，不需要安装或启动 Magpie。1.10.02 的已有 Magpie 用户可看 [Magpie 五步接入教程（可选）](MAGPIE_SETUP.md)。1.10.01 不含该入口和教程。
 
 ## 在程序中配置
 
-1. 进入「设置 → 模型与 API 接入」。1.00.01 默认自有 API 且地址为空；1.00.02 可选择「自定义 OpenAI 兼容 API」，或保留固定本机地址的 Magpie。
+1. 进入「设置 → 模型与 API 接入」。1.10.01 默认自有 API 且地址为空；1.10.02 可选择「自定义 OpenAI 兼容 API」，或保留固定本机地址的 Magpie。
 2. 自有 API 按服务方文档填写 **Base URL**，通常含 `/v1`；不要填写完整 `/chat/completions` 或 `/models` 路径。其他版本前缀也可以，程序会追加固定协议路径。远程地址使用 HTTPS，本机 `localhost`、`127.0.0.1`、`[::1]` 可用 HTTP。
 3. 填写密钥的**环境变量名称**，例如 `HARNESS_API_KEY`。这里不粘贴密钥值。变量有值时使用 `Authorization: Bearer`；无需鉴权的服务可不设置该变量。
 4. 点击「检查连接 / 读取模型」。使用当前表单地址读取 `GET <Base URL>/models`，不保存配置，不发送聊天、人设、记忆或图片，不进行计费推理。会显示核心进程是否读到该环境变量，始终不返回值。部分服务不提供清单：可按服务方说明手动填写模型 ID，再用真实聊天验收。
@@ -39,7 +39,7 @@ Magpie 的厂商密钥、反代 token 和订阅登录仍在 Magpie 中配置；�
 
 | 项目 | 要求 |
 |---|---|
-| provider | 1.00.01 仅 `openai_compatible`；1.00.02 另支持 `magpie` |
+| provider | 1.10.01 仅 `openai_compatible`；1.10.02 另支持 `magpie` |
 | 文本/工具 | `POST /chat/completions`，支持 messages、max_tokens、temperature 和标准 tools/tool_calls；返回 choices[].message |
 | 视觉 | 同一协议支持 `image_url`，包括程序提供的 data URL；视觉模型 ID 填 auxiliary |
 | 鉴权 | 从 key_env 所指环境变量取 Bearer token；不支持把密钥放 URL 查询参数 |
@@ -57,5 +57,5 @@ Magpie 的厂商密钥、反代 token 和订阅登录仍在 Magpie 中配置；�
 - 429：检查额度、服务方限制并等待，不绕过本机 QQ 发送配额。
 - 工具/图片失败：确认对应模型与兼容层支持 tools/image_url；文本可用不代表视觉可用。
 - 只读 health/supervise/诊断会检查所选 API 主机端口，不要求自定义模式下的 Magpie 在线；TCP 可达不代表 TLS、鉴权或推理已经成功。
-- 1.00.02 换回 Magpie：选择 Magpie，核对模型 ID 与环境变量名，保存、重启；不覆盖记忆、人设或角色图片。1.00.01 不支持此选项。
-- 分享时只用发布工具。自定义地址、模型和变量名留在本机 local.json，密钥值仅在用户环境中。1.00.01 公开默认 API 地址留空，1.00.02 默认本机 Magpie，两版模型 ID 都留空。
+- 1.10.02 换回 Magpie：选择 Magpie，核对模型 ID 与环境变量名，保存、重启；不覆盖记忆、人设或角色图片。1.10.01 不支持此选项。
+- 分享时只用发布工具。自定义地址、模型和变量名留在本机 local.json，密钥值仅在用户环境中。1.10.01 公开默认 API 地址留空，1.10.02 默认本机 Magpie，两版模型 ID 都留空。

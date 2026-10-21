@@ -137,8 +137,9 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.h.cfg['group_monitor']['max_groups'] = 1
         r = await self.post(action='add', group_id='22222', name='');self.assertEqual(r.status, 400)
         bridge = DesktopApi.__new__(DesktopApi);bridge._backend = type('Backend', (), {'request': lambda s, *a: {'ok': True}})()
-        self.assertEqual(bridge.request('group-monitor?group_id=11111'), {'ok': True})
-        with self.assertRaises(PermissionError):bridge.request('group-monitor?path=owner')
+        with patch('src.core.desktop_api.ROOT',self.h.store.root.parent):
+            self.assertEqual(bridge.request('group-monitor?group_id=11111'), {'ok': True})
+            with self.assertRaises(PermissionError):bridge.request('group-monitor?path=owner')
 
     async def test_configuration_save_cannot_reenable_removed_group(self):
         r = await self.client.post('/api/config', json={'group_monitor': {'groups': [{'group_id': '11111', 'name': '', 'enabled': True}]}}, headers=self.headers)

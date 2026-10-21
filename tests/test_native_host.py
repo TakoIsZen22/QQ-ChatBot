@@ -43,14 +43,18 @@ class NativeHostTests(unittest.TestCase):
             self.assertEqual(json.loads((self.directory/'control.json').read_text())['run_id'], 'a'*32)
 
     def test_runtime_hash_and_directory_are_required_without_modification(self):
-        compat = {'version':'fixture','sha256':{'QQNT.dll':hashlib.sha256(b'official').hexdigest()}}
+        compat = {'schema':'qq-chatbot.native-compat.v1','version':'fixture','adapter':'embedded-qqnt-v1',
+                  'node':'24.11.1','v8':'14.4.258.16-electron.0','appid':'12345','qua':'fixture',
+                  'sha256':{name:hashlib.sha256(b'official').hexdigest() for name in
+                            ('QQNT.dll','resources/app/wrapper.node','snapshot_blob.bin','icudtl.dat')},
+                  'limits':{'start_timeout_seconds':20,'stop_timeout_seconds':5,'control_poll_ms':250,'qr_max_age_seconds':120}}
         (self.root/'config').mkdir()
         atomic(self.root/'config/qq-native-compat.json',compat)
         client=self.root/'.runtime/qq-client/versions/fixture'
         package=client/'resources/app/package.json'
         package.parent.mkdir(parents=True)
         atomic(package,{'version':'fixture','main':'./application.asar/app_launcher/index.js'})
-        (client/'QQNT.dll').write_bytes(b'official')
+        for name in compat['sha256']:(client/name).write_bytes(b'official')
         original=package.read_bytes()
         self.assertEqual(runtime(self.root)[0],client)
         (client/'QQNT.dll').write_bytes(b'changed')

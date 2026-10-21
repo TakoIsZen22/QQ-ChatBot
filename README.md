@@ -2,18 +2,24 @@
 
 [下载 Windows 桌面版](https://github.com/TakoIsZen22/QQ-ChatBot/releases/latest) · [新手教程](docs/GETTING_STARTED.md)
 
+新增 [本机 QQ 检测与多版本适配](docs/QQ_COMPATIBILITY.md)：向导可检测并复制已适配版本的程序文件。目前清单仅含 9.9.33-52230，不保证任意 QQ 版本通用。
+
 Windows 本机个人 AI 伴侣，采用 **MIT** 许可。本次提供两种发行版本，聊天、记忆、人设与 QQ 功能相同，区别在模型接入方式：
 
 | 版本 | 模型接入 | Windows 包 |
 |---|---|---|
-| **1.00.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.01-r2/qq-chatbot-1.00.01-windows-x64.zip) |
-| **1.00.02** | 自有 API + 可选 Magpie 本机网关 | [Windows ZIP](https://github.com/TakoIsZen22/QQ-ChatBot/releases/download/v1.00.02-r2/qq-chatbot-1.00.02-windows-x64.zip) |
+| **1.10.01** | 仅自有 OpenAI 兼容 API，地址由使用者填写 | [下载与改动介绍](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.10.01) |
+| **1.10.02** | 自有 API + 可选 Magpie 本机网关 | [下载与改动介绍](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.10.02) |
 
-两包均自带 Python 与桌面启动器；1.00.02 的 Magpie 接入使用 `http://127.0.0.1:3425/v1`，不捆绑安装 Magpie。[版本选择、安装与切换](docs/EDITIONS.md)。源码主分支为 1.00.02，1.00.01 由同一份源码经发行脚本生成。
+两包均自带 Python 与桌面启动器；1.10.02 的 Magpie 接入使用 `http://127.0.0.1:3425/v1`，不捆绑安装 Magpie。[版本选择、安装与切换](docs/EDITIONS.md)。源码主分支为 1.10.02，1.10.01 由同一份源码经发行脚本生成。
+
+版本格式固定为 **主版本.功能版本.发行类型**：末两位 `01` 永远表示仅自有 API，`02` 永远表示 API + 可选 Magpie，不用作补丁计数。后续功能升级按同一组发布，例如 `1.11.01 / 1.11.02`。
 
 QQ ChatBot负责聊天、陪伴与记忆，不提供外部 Agent、CLI 绑定或工作转交。
 
-当前下载为 **r2 修订**，已移除工作绑定；程序内版本号与模型接入差异仍为 1.00.01 / 1.00.02。旧 Release 保留用于回滚。
+支持可选[本机账号密码登录](docs/LOCAL_LOGIN.md)：「程序设置 → 本机账号与锁定」自行设置，支持 Windows 加密记住密码、自动登录、锁定、修改密码和输错冷却。它与 QQ 登录独立；QQ 接入提供扫码和账密双入口，真实账密流程待使用者验收，JSONL 仍为可审计的本机文件。
+
+本轮版本为 **1.10.01 / 1.10.02**，逐版改动见各自 Release。旧版 [1.00.01-r2（仅自有 API）](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.00.01-r2) 与 [1.00.02-r2（含可选 Magpie）](https://github.com/TakoIsZen22/QQ-ChatBot/releases/tag/v1.00.02-r2) 保留用于回滚。
 
 每份安装服务一个使用者，可交给任意获得用户授权的 Agent 或人工维护，不依赖指定 Agent 产品。
 
@@ -21,29 +27,29 @@ QQ ChatBot 是程序名；「大肥鱼」只是默认伴侣昵称，可在「专
 
 两个版本使用新提供的图片作为[默认图标 PNG](assets/xiaojing-user-icon.png)及[Windows ICO](assets/xiaojing-user-icon.ico)；「专属人设 → 程序图标」仍可自行更换。
 
-侧栏新增[群聊监听](docs/GROUP_MONITOR.md)：手动添加多个群，单群切换或多窗并排查看实时消息，群备注和监听开关可在程序中修改。监听只保存本机记录，不调用模型或回复；聊天仍只回应已配置主人的私聊。[群内回复方案](docs/QQ_GROUP_PLAN.md)仍为后续设计稿。
+侧栏[群聊监听与回复](docs/GROUP_MONITOR.md)：多群窗口、即时同步白名单、逐群开关和 @回复 / 每条文字回复、公开群人设、独立上下文、重置、群静音与未回复原因。默认仅监听；AI 回复需使用者逐群开启并允许群输出，不读取私人 soul.md、私聊记忆或日记，不执行工具。代码与隔离夹具已补齐，真实群收发待验收，图片/语音和自动群长期记忆未实现。更新后需手动重启聊天服务和 QQ 加载新版；完整步骤见教程。
 
 ## 安装与当前 QQ 状态
 
-两个版本沿用已验证的原创 Windows QQ 宿主，加载固定官方 QQ 内核，向导支持下载、扫码、刷新与停止。此前本机已完成真实机器人登录、主人文字接收和经 Harness/Safety 的模型回复，用户确认收到。新安装仍需独立验收；真实断网恢复、群接收和 QQ 媒体尚待验证，历史补拉/语音取文件/图片上传发送未实现。
+两个版本沿用已验证的原创 Windows QQ 宿主，加载固定官方 QQ 内核，向导支持下载、扫码或 QQ 账密、记住 QQ 密码、可选自动登录、刷新与停止。新增账密的真实登录与安全验证待使用者验收，操作见 [QQ 登录教程](docs/QQ_SETUP.md)。此前本机已完成真实机器人登录、主人文字接收和经 Harness/Safety 的模型回复，用户确认收到。新安装仍需独立验收；真实断网恢复、群接收和 QQ 媒体尚待验证，历史补拉/语音取文件/图片上传发送未实现。
 
 Windows包需与本版本一致，完整解压后双击QQ ChatBot.exe。旧版发布资产不能代表新版能力；Source code ZIP需按下面步骤安装环境。[完整教程](docs/GETTING_STARTED.md)可在程序内阅读。构建说明见[WINDOWS_BUILD](docs/WINDOWS_BUILD.md)。
 
 ## 源码运行
 
-1.00.01 按 [自有 API 接入说明](docs/MODEL_API.md)配置。1.00.02 可使用同一教程，也可按 [Magpie 五步接入教程（仅 1.00.02，可选）](docs/MAGPIE_SETUP.md)配置已有网关。程序不会要求你先安装 Magpie。
+1.10.01 按 [自有 API 接入说明](docs/MODEL_API.md)配置。1.10.02 可使用同一教程，也可按 [Magpie 五步接入教程（仅 1.10.02，可选）](docs/MAGPIE_SETUP.md)配置已有网关。程序不会要求你先安装 Magpie。
 
 1. 解压到自己的独立目录。准备 Python 3.11 或更新版本；桌面另外需要 Python 3.11、Microsoft Edge WebView2 Runtime，语音也使用独立 3.11 环境。
 2. 双击 `tools/install.bat`，再双击 `tools/install-desktop.bat`。源码不包含环境、模型权重、第三方客户端或登录态。QQ 源码运行另需 Visual Studio C++ x64 工具链与 Windows SDK，执行 `python tools/build-native-host.py`；Windows 桌面包已内置自写宿主。
 3. 选择 Magpie 时，自己配置并启动本机网关；使用自有 API 时，在设置中选择「自定义 OpenAI 兼容 API」，填写 Base URL 与密钥环境变量名称。不要把凭据发给维护 Agent。
 4. 双击桌面“QQ ChatBot”或根目录 `QQ ChatBot.vbs`。在“设置 → 使用者与维护 Agent”填称呼及维护者名称，在“模型与 API 接入”检查连接并选择所选服务的模型 id。
-5. 保存并重启聊天，再手动恢复“只回复”。模型 id 因安装而异，默认留空。QQ 在首次向导保存双账号、准备官方组件后手动扫码；收发与限制见 [QQ 接入](docs/QQ_SETUP.md)。
+5. 保存并重启聊天，再手动恢复“只回复”。模型 id 因安装而异，默认留空。QQ 在首次向导保存双账号、准备官方组件后选择扫码或 QQ 账密；收发与限制见 [QQ 接入](docs/QQ_SETUP.md)。
 
 界面提供对话、总览、长期记忆、日记、专属人设、约定与学习、表情理解、能力与权限、设置、程序设置和运行记录。聊天可选择、粘贴、拖入图片，QQ图片路径已有受限CDN识图逻辑，真实QQ媒体仍待验收。
 
 程序设置包含开机自启、托盘、主题/字号、备份恢复、诊断与 Agent 巡检。窗口 X 默认收进托盘；真正退出用 Ctrl Q 或托盘菜单。详见 [桌面说明](docs/DESKTOP.md)。
 
-接入教程可在「设置 → 模型与 API 接入」直接阅读；1.00.01 仅显示自有 API 教程，1.00.02 同时显示 Magpie 教程。桌面帮助不依赖聊天核心正在运行。
+接入教程可在「设置 → 模型与 API 接入」直接阅读；1.10.01 仅显示自有 API 教程，1.10.02 同时显示 Magpie 教程。桌面帮助不依赖聊天核心正在运行。
 
 ## 任意 Agent 监管
 
@@ -90,7 +96,7 @@ $snapshot = & '.\.venv\Scripts\python.exe' 'tools\manage.py' 'backup'
 .\.venv\Scripts\python.exe tools\package-release.py
 ```
 
-生成主源码包 `dist/qq-chatbot-1.00.02.zip`，只含白名单源码、通用配置与文档，附文件哈希清单；排除 Git 历史、私人配置、人设、数据、环境和登录态。双版本构建使用 `python tools/build-editions.py`，同时生成 1.00.01 与 1.00.02 的源码和 Windows 包。向已有公开仓库提交时，以远程主分支为基础更新干净源码，不上传本机旧历史。工具不创建仓库或推送。见 [发布步骤](docs/RELEASING.md)。
+生成主源码包 `dist/qq-chatbot-1.10.02.zip`，只含白名单源码、通用配置与文档，附文件哈希清单；排除 Git 历史、私人配置、人设、数据、环境和登录态。双版本构建使用 `python tools/build-editions.py`，同时生成 1.10.01 与 1.10.02 的源码和 Windows 包。向已有公开仓库提交时，以远程主分支为基础更新干净源码，不上传本机旧历史。工具不创建仓库或推送。见 [发布步骤](docs/RELEASING.md)。
 
 原创代码与文档为 [MIT](LICENSE)，第三方素材与依赖见 [NOTICE](NOTICE.md)；原图的第三方角色权利不由代码许可重新授予。
 

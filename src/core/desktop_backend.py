@@ -20,7 +20,10 @@ class DesktopBackend:
         cfg=load()
         timeout=timeout or cfg['desktop']['request_timeout_seconds']
         data=None if body is None else json.dumps(body,ensure_ascii=False).encode('utf-8')
-        req=urllib.request.Request(f'http://127.0.0.1:{cfg["server"]["port"]}/api/'+path,data=data,headers={'Content-Type':'application/json','X-Harness-Local':'1'})
+        headers={'Content-Type':'application/json','X-Harness-Local':'1'}
+        token=getattr(self,'_account_token',lambda:None)()
+        if token:headers['Authorization']='Bearer '+token
+        req=urllib.request.Request(f'http://127.0.0.1:{cfg["server"]["port"]}/api/'+path,data=data,headers=headers)
         try:
             with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req,timeout=timeout) as r:return json.load(r)
         except urllib.error.HTTPError as e:
@@ -81,6 +84,9 @@ class DesktopBackend:
 
     def stop_qq(self):
         from .native_host import NativeHost
+        from .qq_password import QQPassword
+        cfg=load()
+        QQPassword(ROOT,str(cfg['qq']['bot_id']),cfg['account']['remember_days']).disable_auto()
         return NativeHost(ROOT).control('stop')['message']
 
     def stop_all(self):

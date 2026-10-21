@@ -6,11 +6,11 @@
 
 产品显示名为 QQ ChatBot，默认伴侣昵称仍为大肥鱼。桌面与开始菜单入口为「QQ ChatBot」，根目录启动器为 `QQ ChatBot.vbs`，发布包前缀为 `qq-chatbot-`。昵称修改不会覆盖左侧产品品牌。
 
-当前源码版本 1.00.02；同时发行 1.00.01（仅自有 API）与 1.00.02（自有 API + 可选 Magpie）。源码包不包含环境、运行数据、账号配置、个人角色卡、第三方客户端或登录态；按 README 安装，不把旧安装的登录与验收状态当作本机状态。
+当前源码版本 1.10.02；两种发行版本为 1.10.01（仅自有 API）与 1.10.02（自有 API + 可选 Magpie）。下载和逐版改动见对应 GitHub Release，旧版标签与资产保留原名。版本末两位固定为发行类型 `01/02`，功能升级递增前两段，如 `1.11.01 / 1.11.02`，详见 docs/RELEASING.md。源码包不包含环境、运行数据、账号配置、个人角色卡、第三方客户端或登录态；按 README 安装，不把旧安装的登录与验收状态当作本机状态。
 
-发行差异与逐步教程见 docs/EDITIONS.md。`src/version.py` 决定版本，`src/core/edition.py` 返回能力并拒绝不支持的 provider，`model_endpoint.py` 在配置、探测和模型请求前统一校验。1.00.01 允许全空模型的首次启动；填模型前必须有有效 Base URL。所有推理仍经 `modules/model.py`，不另建网络出口。1.00.02 沿用当前本机配置，不因构建另一版本而改动它。
+发行差异与逐步教程见 docs/EDITIONS.md。`src/version.py` 决定版本，`src/core/edition.py` 返回能力并拒绝不支持的 provider，`model_endpoint.py` 在配置、探测和模型请求前统一校验。1.10.01 允许全空模型的首次启动；填模型前必须有有效 Base URL。所有推理仍经 `modules/model.py`，不另建网络出口。1.10.02 沿用当前本机配置，不因构建另一版本而改动它。
 
-`tools/build-editions.py` 从隐私白名单源码创建两个隔离构建目录，`tools/release_editions.py` 设置各版公开配置、版本、设置页和向导入口；各自再次校验后生成源代码与 Windows ZIP。构建步骤与回滚见 docs/EDITIONS.md。1.00.01 不能直接使用旧 Magpie 的 local.json，切换时按新安装在界面重配，再恢复 JSONL 与附件。两版默认图标均为使用者提供的新图，图标位置见 assets/README.md。
+`tools/build-editions.py` 从隐私白名单源码创建两个隔离构建目录，`tools/release_editions.py` 设置各版公开配置、版本、设置页和向导入口；各自再次校验后生成源代码与 Windows ZIP。构建步骤与回滚见 docs/EDITIONS.md。1.10.01 不能直接使用旧 Magpie 的 local.json，切换时按新安装在界面重配，再恢复 JSONL 与附件。两版默认图标均为使用者提供的新图，图标位置见 assets/README.md。
 
 首先运行 tools/supervise.py --json（使用本安装的 .venv Python），只读检查版本、端口、暂停与已启用的 QQ。默认模型、QQ 账号留空，高权限关闭。设置页可改称呼、QQ 和维护 Agent 名称；名称是交接信息，不自动启动或授权 Agent。
 
@@ -18,7 +18,7 @@
 
 ## Windows 绿色包与首次使用
 
-普通使用者按接入方式选择 1.00.01 或 1.00.02 的 Windows 包，完整解压后双击 `QQ ChatBot.exe`，配置模型并使用本机聊天。首次向导可手动扫码。此前本机真实主人文字收发已通过；不同安装、群消息及断网恢复分别验收。教程在 docs/GETTING_STARTED.md 与程序内。源码包仍按原环境安装；下文 `.venv` 命令为源码运行方式。
+普通使用者按接入方式选择 1.10.01 或 1.10.02 的 Windows 包，完整解压后双击 `QQ ChatBot.exe`，配置模型并使用本机聊天。首次向导可手动扫码。此前本机真实主人文字收发已通过；不同安装、群消息及断网恢复分别验收。教程在 docs/GETTING_STARTED.md 与程序内。源码包仍按原环境安装；下文 `.venv` 命令为源码运行方式。
 
 **绿色包维护入口用 `_runtime/python.exe`，不要找不存在的 `.venv`：**
 
@@ -53,27 +53,37 @@ $snapshot = & '.\_runtime\python.exe' 'tools\manage.py' 'backup'
 
 ### 自写 QQ 宿主与通道
 
-`core/native_host.py` → `qq_native/host.cpp` 宿主 → 官方固定 QQNT 的 Node/V8 → `qq_native/entry.js/session.js` → `driver.js/protocol.js/gateway.js` → `modules/qq_bridge.py` → Harness/GroupMonitor。发送经 Safety，不直接调用原生发送绕过暂停。兼容版本与文件哈希集中 `config/qq-native-compat.json`，本机端口 `qq.native_port=3002`。完整 ABI/生命周期见 docs/NATIVE_QQ.md。
+`core/native_host.py` → `qq_native/host.cpp` 宿主 → 官方固定 QQNT 的 Node/V8 → `qq_native/entry.js/session.js` → `driver.js/protocol.js/gateway.js` → `modules/qq_bridge.py` → Harness/GroupMonitor/GroupChat。发送经 Safety，不直接调用原生发送绕过暂停。兼容版本与文件哈希集中 `config/qq-native-compat.json`，本机端口 `qq.native_port=3002`。完整 ABI/生命周期见 docs/NATIVE_QQ.md。
 
 Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 `python tools/build-native-host.py`，需 VS C++ x64 与 Windows SDK，输出 `.runtime/native-host`。官方 QQ 由向导另行下载到 `.runtime/qq-client`，新宿主不修改 package.main、不启动日常 QQ、不自动读取保存账号。旧 prepare 安装先停止宿主后 restore，不能覆盖变化的原文件。
 
-程序设置→首次使用/QQ接入→保存双账号与模型→准备组件→扫码接入→机器人手机确认。二维码过期点刷新；账号错误/无法恢复的离线状态先停止QQ再手动扫码。启动、停止命令为 `tools/qq-native.py start/stop`，刷新为 `refresh`；Python 路径遵循源码/绿色包差别。桌面开机自启与恢复器仅启动核心，QQ 必须手动登录；仅退出界面保留当前QQ。停止按 PID/映像/创建时间/run_id 核对本项目进程，不批量结束 QQ。
+程序设置→首次使用/QQ接入→保存双账号与模型→准备组件→扫码接入→机器人手机确认。二维码过期点刷新；账号错误/无法恢复的离线状态先停止QQ再手动扫码。启动、停止命令为 `tools/qq-native.py start/stop`，刷新为 `refresh`；Python 路径遵循源码/绿色包差别。桌面开机自启与恢复器默认仅启动核心；用户可在 QQ 账密入口自选记住密码及启动时自动登录，每次桌面首次解锁只尝试一次。主动停止 QQ 关闭自动登录；仅退出界面保留当前 QQ。扫码与账密操作详见 docs/QQ_SETUP.md。停止按 PID/映像/创建时间/run_id 核对本项目进程，不批量结束 QQ。
 
 私有 `.runtime/qq-native/profile` 下保存引擎全局、账号、下载与重定向 APPDATA/LOCALAPPDATA。是路径配置隔离，不是OS沙箱；不要声称官方内核全部访问已审计。`host-output.log` 可能有敏感原生登录材料，禁止复制到 issue 或打印；诊断仅用脱敏 state/events 和 doctor。data 快照不含QQ登录目录，需要另存时先停止QQ，再私下复制 profile 与 config/local.json。日志、去重和配额不清除。
 
-本机正式宿主：真实扫码、机器人身份校验、主人文字接收、经模型与Harness/Safety发送、用户确认收到、随后恢复暂停已通过。真实断网重连、白名单群、多机安装及QQ媒体待验收；历史补拉、语音附件获取、图片上传发送尚未实现。每次宿主启动后主人先发新消息以学习其UID；不自动重发不确定发送或旧暂停消息。原生群白名单在启动时截取，新增或重新开启群需手动停止并启动QQ，停用/移除核心立即过滤。
+本机正式宿主：真实扫码、机器人身份校验、主人文字接收、经模型与Harness/Safety发送、用户确认收到、随后恢复暂停已通过。真实断网重连、白名单群、多机安装及QQ媒体待验收；历史补拉、语音附件获取、图片上传发送尚未实现。每次宿主启动后主人先发新消息以学习其UID；不自动重发不确定发送或旧暂停消息。新版群白名单可即时同步；首次更新须手动停止/启动QQ加载新驱动，详情见下一节。
 
 只读 `tools/qq-native.py doctor` 分层核对客户端、固定哈希、自有宿主、网关及在线状态；旧状态/二维码/端口不能当成登录成功。`launch_available`只表示允许手动扫码，不是新安装已验收。回滚先保持暂停、停止QQ与核心、备份数据/附件/本机配置，换回可信源码，保留profile/日志/配额，旧版不自动启动新版宿主。
 
-### 独立群监听
+登录状态同步修复（2026-10-21，源码 1.00.02 / 两发行共用模块）：扫码前保持事件流、在线后校验身份；驱动就绪/离线/恢复立即推送心跳，本机宿主未启动时按最小间隔重试。桌面状态与慢数据分开，弹窗和顶部区分“已登录，通道连接中”与真正在线。详见 docs/NATIVE_QQ.md。核心改动可仅重启聊天加载；驱动改动在下一次用户手动停止/启动 QQ 时加载，需要重新扫码。前端需从托盘完全退出界面后重开；不要为刷新界面强制结束已登录 QQ。回滚按上述流程换回修改前源码，保留暂停/登录态/配额/日志。已发布 r2 包不包含此后本机修复，未经发布流程不要声称已更新远端安装包。
 
-`modules/group_monitor.py` 属于通道模块9的只读扩展，由 Harness 注入 QQBridge。群 `post_type=message/message_type=group` 只交 GroupMonitor，随后返回；不会到 receive/worker、私人记忆或人设，没有群发送动作。`channel/local_ui.py` 的 `/api/group-monitor` GET 提供白名单、连接与最近事件时间；GET `?group_id=群号` 返回该群有限条记录；POST 仅允许 add(group_id/name)、update(group_id/name/enabled)、remove(group_id)，字段严格校验，保留 Host/Origin/本机头限制。配置修改先 validate/save_local 成功再热替换。
+### 群监听与独立群回复（1.10.01 / 1.10.02 新源码）
 
-配置 `group_monitor` 集中在 settings/local：`groups` 默认空，`max_groups=12/history_limit=100/max_text_chars=2000`；程序内管理群列表。记录私有 `data/groups/<id>/monitor.jsonl`，Store.tail 有限读取，按群保留近期 ID 去重。移除保留历史，停用不采集；没有历史补拉、撤回同步或附件抓取。全暂停只限制输出，被动监听继续；停止采集需单群停用或停服务。记录无自动清理，关注磁盘并在停机后归档。
+通道模块9由 `modules/group_monitor.py` 负责白名单采集/去重，新增 `modules/group_chat.py` 负责显式开启的群文字轮次。路由：NativeDriver → QQBridge.ingest → GroupMonitor → GroupChat 有界队列 → 共享 turn_lock → modules/model.py → QQBridge.send_group → Safety.acquire(group=True) → 原生纯文字发送。群事件不进入主人 receive/worker/prompt，GroupChat 不持有私人 Role/Memory/Diary/Dispatcher，模型不提供工具。每群使用单独公开人设、按群 JSONL 上下文，普通未触发消息不进入模型。仅共享角色昵称和所选模型出口；不读取私人 soul.md。
 
-桌面 `group-monitor.js/.css` 与 index 中“群聊监听”页；DesktopApi 固定接口白名单和 groups 窗口偏好；DesktopAssets 加内容指纹。多群标签/并排窗口、滚动不跳底、备注/启停/移除、断线提示与双主题见 docs/GROUP_MONITOR.md。群配置只存在 local.json，记录随 data 快照复制；数据恢复不覆盖当前配置。发布检查额外拒绝默认预填群号/备注。
+程序内「群聊监听 → 群设置」可编辑 `group_id/name/enabled/reply_enabled/trigger/public_prompt`。旧三字段列表默认仅监听，新群也默认不回复。触发方式 at（默认，结构化 @本人）或 all（显式选择每条新文字）；真实 @字段与群 sendMsg ABI 尚待本机真实群验收。全局暂停、群静音、单群允许三项缺一不可；每群默认15秒冷却、最多5条/分钟，一轮仅一条文字，不 @全体、不群管理。队列满、超龄、失败或暂停取消不自动补发。
 
-验证：`tools/smoke-group-monitor.py` 隔离 WebView2 原生桥；`tests/test_group_monitor.py` 验证白名单、按群隔离、重启去重、热保存、暂停只读、消息不进入主人/模型/工作、移除保留、跨域/注入拒绝、窗口偏好。回滚先备份数据与配置，停止本项目核心/界面后换回受信任的发布版本源码或原目录；从私人配置去掉仅新增的 group_monitor 字段（旧版不识别），保留 monitor.jsonl，不删除其他数据或登录态；启动后保持原有暂停。真实 QQ 群接收需使用者扫码并在已加入的测试群验收，夹具不替代实连。
+`/api/group-monitor`：GET 白名单/连接/安全/同步/最近处理结果，GET `?group_id=群号` 有限读取监听记录；POST add/update（上述逐群字段）、remove、sync、reset_context。校验 Host/Origin/本机头/本机登录。先验证并 save_local，再热替换群配置、取消旧群轮次，调用受限 configure_groups 同步到新驱动；失败保留已保存配置并显示未同步，不假装生效。核心只有收到同步确认才生成群回复。核心重连会重新同步，未同步可手动点「同步群配置」。驱动只接受最多12个群、回复许可和不高于既有上限的配额；不是任意原生方法代理。
+
+更新后必须退出再开界面、重启聊天服务，并在 QQ 接入手动停止/启动 QQ，才能加载新版处理器。不要自动重启现有账号或解除群静音。**旧驱动不支持 configure_groups；仅刷新页面不能加载新驱动。** 新驱动运行后增改/停用群白名单即时同步，不必每次重启。机器人必须已在该群并收到新群事件后才能发送；不自动加群、不补拉历史。
+
+配置 `group_monitor`：groups默认空；max_groups=12/history_limit=100/max_text_chars=2000。`group_chat`：context_messages=12、queue_size=12、cooldown_seconds=15、max_event_age_seconds=120、max_reply_chars=1000、public_prompt为默认公开人设。高级 group_chat 参数修改需重启核心；逐群设置立即保存。数据以 paths.data 为根：groups/<id>/monitor.jsonl、chat.jsonl、reply_events.jsonl、reservations.jsonl；outbound.jsonl 继续持久化发送配额，group_spoken.jsonl 只记最近群发言元数据。备份整个 data 与附件、保留配置快照。停用/移除保留全部记录；重置上下文写标记，不删除历史/限流/去重。记录无自动清理，关注磁盘容量。
+
+桌面在 group-monitor.js/.css 与 index.html；提供多窗、群设置、公开说明、未回复原因、同步、重置与群静音。教程见 docs/GROUP_MONITOR.md；群公开说明可手动维护，尚无自动长期记忆审核、媒体理解、引用回复或撤回同步，不执行工作。
+
+验证：tests/test_group_monitor.py、tests/test_group_chat.py、tests/qq-group.test.js 与 tools/smoke-group-monitor.py 使用隔离数据、本机 HTTP/NDJSON 和假模型/原生服务；不代表真实群收发已通过。真实验收由使用者在测试群确认登录与监听后逐群开启 @回复，手动允许群输出，验证一次回复、静音、不同群隔离，再恢复原安全状态。维护 Agent 没有因此获得对外发言授权。
+
+本轮源码回滚快照为 dist/source-before-group-chat-20261021.zip。数据备份工具因正式核心持有单实例锁未执行，未停服务或改正式数据。回滚前按下文正常停机备份，保留 data/local.json/登录态/日志/配额；换回可信源码，仅移除旧版不认识的 group_chat 及逐群新增字段 reply_enabled/trigger/public_prompt，保留 group_monitor 原三字段和全部群 JSONL；启动后保持原安全状态。不要删除限流记录来恢复。
 
 | # | 模块 / 文件 | 调用关系与数据 |
 |---|---|---|
@@ -85,7 +95,7 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 | 6 | `src/modules/music.py`、`tools/music.ps1` | 用户工作台 → Windows SMTC；切歌需额外 allow_control；`music.jsonl` |
 | 7 | `src/modules/growth.py` | 工作台设置三权重 → 归一化 → 下一轮模型提示；`growth.jsonl` |
 | 8 | `src/modules/learning.py` | 用户来源/闲时计划 → 允许域名获取/搜索 → 多源归档/模型对照；`learning*.jsonl` |
-| 9 | `src/modules/qq_bridge.py`、`src/qq_native/` | 本机HTTP/NDJSON → owner/群过滤 → Harness/GroupMonitor；发送经Safety；本机主人文字收发已验收 |
+| 9 | `src/modules/qq_bridge.py`、`src/qq_native/` | 本机HTTP/NDJSON → owner/群过滤 → Harness/GroupMonitor/GroupChat；群模块见上一节，发送经Safety；本机主人文字收发已验收，群收发待实测 |
 | 10 | `src/modules/devices.py` | 用户本机 API → 单设备 ADB/前台包检查 → 动作；`device_actions/macros` |
 | 11 | `src/modules/model.py` | Harness/感官/调度 → 所选 OpenAI 兼容 API 的 Chat Completions；主/辅助模型；usage 入日志 |
 | 12 | `src/modules/plugins.py`、`user_plugins/` | 审核后的 Python 打分插件、MCP stdio；本机手动调用，模型无通用高权限口 |
@@ -95,6 +105,14 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 调用必须经组合根注入依赖。不要在插件中反向 import main 创建第二个 Harness，也不要绕过 Safety 直接发 QQ。架构图见 `架构文档.md`。
 
 ## 2. 配置清单
+
+本机登录是可选功能，由使用者在「程序设置 → 本机账号与锁定」自行设置，不给维护 Agent 提供密码。`core/local_account.py` 管 scrypt、会话、持久化冷却与审计；`core/desktop_api.py` 对桌面桥逐入口校验；`channel/local_ui.py` 校验 HTTP，未登录只保留精简健康状态、登录和紧急暂停/停机。`channel/ui/desktop/account.js/.css` 和 `channel/ui/login.html` 是界面。账号文件 `config/account.local.json`、限流 `.runtime/account-attempts.json`、审计 `.runtime/account-logs/` 都是私有数据，不发布。
+
+启用后冷启动和自动恢复等待登录，已有后台聊天不因锁定而停止；开机入口仍可启动锁定的界面。若旧聊天核心尚未支持校验，先保持暂停、重启核心再设置账号，界面会拒绝在旧核心仍运行时启用。备份包含 config 中的私有账号；恢复 data 不覆盖账号。忘记密码、文件损坏、迁移和回滚的完整步骤见 [本机登录](docs/LOCAL_LOGIN.md)，不得删除失败记录绕过冷却。
+
+`core/remembered_login.py` 管可选的 Windows DPAPI 记住密码，密文位于 `.runtime/account-remember.local.json`，绑定当前 Windows 用户与安装路径。默认 30 天（account.remember_days）；会话仍只存内存，密码不回传桌面网页。自动登录只在新桌面进程首次加载时尝试；手动锁定/默认托盘锁定关闭自动登录，忘记缓存保留账号/失败记录/审计。复制安装、密码变化、损坏、到期或冷却后需手动登录；不迁移该密文、不明文回退。数据备份不含该文件，源码/Windows 包均排除。回滚到不认识此文件的版本会忽略缓存，不能当作密码恢复途径。
+
+启用账号后，未登录的维护脚本仍可查精简健康状态、全部暂停和停止，但 `reply-only` / `active` 等私人 API 操作会被拒绝。手册后文的恢复聊天步骤改由使用者在桌面登录后点击完成；维护者不应索取密码或导出会话来绕过登录。直接访问磁盘的离线备份/恢复仍依赖 Windows 权限。
 
 默认 `config/settings.json`，覆盖 `config/local.json`，后者不入版本控制。桌面「设置」和 `tools/manage.py set-model` 都写 local.json。保存配置需重启；顶部安全开关立即生效并存 `data/safety.jsonl`，其最新状态优先于默认 safety.mode。
 
@@ -106,6 +124,8 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 | owner | name、qq_id（收消息的使用者，不是机器人登录 QQ） |
 | model | provider 为 magpie/openai_compatible；base_url 为对应 Base URL；main/auxiliary 为所选服务的模型 ID；key_env 默认 MAGPIE_API_KEY（自定义可用 HARNESS_API_KEY）；timeout_seconds、models_timeout_seconds、max_response_bytes、max_tokens、temperature、history_messages、max_tool_rounds |
 | qq | enabled 默认false；bot_id 预期机器人；client_path 仅作独立QQ文件记录；native_port=3002；reconnect_min/max_seconds；media_hosts/media_timeout_seconds |
+| group_monitor | groups 逐群设置，max_groups/history_limit/max_text_chars；旧配置默认仅监听 |
+| group_chat | context_messages/queue_size/cooldown_seconds/max_event_age_seconds/max_reply_chars/public_prompt；独立公开群对话 |
 | safety | mode paused/reply_only/active；groups_muted；private/group_per_minute；irreversible_interval_seconds/per_day；stop_words |
 | conversation | min/max_delay_seconds、night_multiplier、max_bubbles、bubble_chars、max_input_chars、queue_size |
 | memory | retrieval_limit、普通/重要半衰期、max_content_chars |
@@ -123,6 +143,7 @@ Windows 包内置 `_tools/qq-native/QQChatBot.NativeHost.exe`；源码先执行 
 | stickers（理解） | recognition_enabled 独立于发送开关；max_image_bytes 默认5MB、max_pixels 默认1600万、preview_edge 默认768、animation_samples 默认3、max_animation_frames 默认300、library_limit 默认100 |
 | 聊天自动识图 | stickers.max_images_per_turn 默认3；qq.media_hosts 精确允许QQ图片CDN，qq.media_timeout_seconds 默认15；视觉通过所选 API 的辅助模型 |
 | desktop | poll_interval_ms、请求/启动/停止超时、qr_max_age_seconds、window_width/window_height（默认1280×820，最小940×650） |
+| account | session_seconds、max_failures、failure_window_seconds、lockout_seconds、lock_on_hide；私有账号由程序设置写 config/account.local.json，详见 docs/LOCAL_LOGIN.md |
 
 **密钥在哪里**：Magpie上游在Magpie配置；自定义API密钥在model.key_env指定的环境变量中。配置仅存变量名，日志遮盖该值。自写QQ网关没有凭据配置，不采集QQ登录票据。不要打印全量环境变量。
 
@@ -237,7 +258,7 @@ Magpie 是可选项，已有安装按 docs/MAGPIE_SETUP.md 的五步教程连接
 .\.venv\Scripts\python.exe tools\manage.py backup
 ```
 
-backup 打印一个 `backups\YYYYMMDD-HHMMSS-ffffff` 绝对目录。记下这行；文件夹内是 data、config、manifest.json（每个数据文件 SHA256 与 JSONL 行数）。运行中的进程占锁时会拒绝备份。脚本复制全部 data，包括媒体、限流/去重/暂停状态；config 单独保存，不包含程序生成的密钥值。
+backup 打印一个 `backups\YYYYMMDD-HHMMSS-ffffff` 绝对目录。记下这行；文件夹内是 data、config、manifest.json（每个数据文件 SHA256 与 JSONL 行数）。运行中的进程占锁时会拒绝备份。脚本复制全部 data，包括媒体、限流/去重/暂停状态，并单独复制 config。启用本机登录后，config 含私有账号哈希和会话校验材料，整个备份不可分享；厂商 API 环境变量值不被复制。
 
 手工备份：停机后复制完整data（包括JSONL、附件、人设和形象），另存config与源码版本。logs另存供审计。QQ入口原文件和登录态不是data快照的一部分；私有.runtime与外部历史归档不能公开上传。
 
@@ -333,3 +354,22 @@ GET/POST /api/soul 沿用本机 Host/Origin/写请求头保护；保存必须带
 重新登记桌面后，新建 QQ ChatBot 桌面/开始菜单快捷方式。仅在工作目录、启动参数和 Python 目标均匹配本安装时移除旧入口；同名但属于其他位置的入口不会覆盖。已启用的本安装 Run 项由 DaFeiYuHarness 迁移为 QQChatBot，清除匹配的旧项以免重复启动；未启用时不擅自开启。角色自定义本身不重命名这些入口。
 
 卸载登记键 DaFeiYuHarness、Windows AppUserModelID、旧版监管 schema 与源码 manifest schema 均作为内部兼容标识保留；Windows 显示名称已更新。项目目录和 data 不移动，原地升级不用迁移附件路径。旧本机 `大肥鱼.vbs` 可继续作为兼容入口，公开包只提供新启动器。不要为了消除内部旧字符串去重建账户、删除数据或改监管协议。
+
+
+## 2026-10-21 本机 QQ 检测与多版本兼容（源码 1.00.02）
+
+新增 core/native_compat.py、core/local_qq.py 和 qq_native/compatibility.js；原生兼容清单升级 v2 profiles，兼容旧 v1。向导支持检测本机 QQ、显示未适配原因，以及将已适配且通过关键文件校验的程序文件复制到独立目录。新增本机 qq.native_version 记录显式选择，默认空串按清单选择。不会修改日常 QQ 或复制登录态，不更换模型、不自动启停 QQ 或解除暂停。
+
+目前清单仍只有 9.9.33-52230；没有实现任意 QQ 版本通用。多个版本选择由夹具验证，新版本必须独立适配和真实验收，不能删掉 ABI/哈希检查。精简程序复制后的真实扫码收发尚待验收。模块地图、程序内步骤、配置清单及回滚见 docs/QQ_COMPATIBILITY.md；使用复制功能后回退旧源码前必须移除本机配置中新增的 native_version 字段。
+
+本轮维护前已创建并校验私人数据快照，源文件另行私下备份。保留既有 QQ 连接与全部暂停；只读核对原独立运行时哈希、在线与核心状态，没有真实模型调用、QQ 发送或重新扫码。未推送远程、未重建发布包。
+
+## QQ 扫码 / 账密双入口（1.10.01 / 1.10.02 源码）
+
+新增 `qq_native/password_login.js`（原生登录分阶段及内存挑战）、`core/qq_password.py`（QQ 专用 DPAPI 缓存）、`core/qq_verification.py`（隔离验证窗口）、`channel/ui/desktop/qq-login.js/.css`（两处共用界面）。调用链：DesktopApi 登录鉴权 → Onboarding 服务锁 → NativeHost 经每进程授权 loopback IPC → session/password_login → 官方内核；账号成功仍走既有身份校验和消息服务初始化。所有聊天发送仍走既有 Safety。
+
+QQ 密码与本机程序账号无关，不读取测试文档的本机密码作为 QQ 密码。私有 `.runtime/qq-password.local.json` 存当前用户/安装路径/机器人号绑定的加密协议凭据；不在 data 快照、诊断或发布包内。默认不保存、不自动登录。手动停止 QQ 会关闭 QQ 自动登录；已有在线宿主不被自动登录替换；自动尝试不解除暂停。
+
+升级：托盘仅退出界面，再打开当前源码启动器加载入口。旧宿主不具备登录 IPC，首次账密使用时由使用者手动停止/启动 QQ；不要为更新界面强制注销原会话。保持暂停，用户输入 QQ 密码，必要时完成腾讯验证，再检查在线及主人消息接收。真实发送另行授权。
+
+回滚：保存私有配置、QQ profile、QQ 缓存、账号/审计/配额及 data，退出本项目后恢复可信旧源码；改动前源文件备份 `dist/source-before-qq-password-login-20261021.zip`。旧源码忽略新缓存；不要清空日志/登录目录修复问题。新增账密的真实登录、验证码和新机器自动登录仍待使用者验收，详见 docs/ACCEPTANCE.md。

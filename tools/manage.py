@@ -52,7 +52,7 @@ def backup(cfg):
         shutil.copytree(source,dest/'data',ignore=shutil.ignore_patterns('.instance.lock'))
         hashes=manifest(dest/'data')
         (dest/'manifest.json').write_text(json.dumps({'files':hashes,'jsonl_counts':counts},ensure_ascii=False,indent=2),encoding='utf-8')
-        # 配置独立备份，无密钥；恢复数据时不覆盖当前运行配置。
+        # 私有配置独立备份（可能含本机账号哈希/会话材料）；恢复 data 不覆盖配置。
         shutil.copytree(ROOT/'config',dest/'config')
         return dest
     finally:lock.close()

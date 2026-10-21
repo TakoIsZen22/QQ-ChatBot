@@ -2,11 +2,15 @@
 
 // QQNT identifiers stay strings until the boundary: message IDs can exceed 2^53.
 const id = value => /^\d{5,12}$/.test(String(value)) ? String(value) : null;
-function segments(elements) {
+function segments(elements, selfId, selfUid) {
   const result = [];
   for (const element of (Array.isArray(elements) ? elements : []).slice(0, 100)) {
     if (element.elementType === 1 && typeof element.textElement?.content === 'string') {
-      result.push({type: 'text', data: {text: element.textElement.content.slice(0, 8000)}});
+      const e = element.textElement;
+      const target = [e.atNtUin, e.atUid, e.atNtUid].find(x => id(x)) ||
+        (selfUid && [e.atUid, e.atNtUid].includes(selfUid) ? selfId : null);
+      if (e.atType && target) result.push({type: 'at', data: {qq: String(target)}});
+      else result.push({type: 'text', data: {text: e.content.slice(0, 8000)}});
     } else if (element.elementType === 6 && element.faceElement) {
       result.push({type: 'face', data: {id: String(element.faceElement.faceIndex ?? '')}});
     } else if (element.elementType === 2 && element.picElement) {
@@ -22,7 +26,7 @@ function segments(elements) {
   return result;
 }
 
-function message(raw, policy, selfId) {
+function message(raw, policy, selfId, selfUid) {
   if (!raw || typeof raw !== 'object' || !id(selfId) || raw.msgId == null) return null;
   const sender = id(raw.senderUin);
   if (!sender || sender === String(selfId)) return null;
@@ -35,7 +39,7 @@ function message(raw, policy, selfId) {
     message_id: msgId, user_id: sender, self_id: String(selfId),
     time: Number.isFinite(time) ? time : Math.floor(Date.now() / 1000),
     sender: {user_id: sender, nickname: String(raw.sendNickName || '').slice(0, 80)},
-    message: segments(raw.elements)};
+    message: segments(raw.elements, selfId, selfUid)};
   if (group) event.group_id = group;
   return event;
 }
@@ -50,4 +54,10 @@ function textRequest(params, owner) {
   return text;
 }
 
-module.exports = {id, segments, message, textRequest};
+function groupTextRequest(params, groups) {
+  if (!params || !groups.includes(id(params.group_id)) || Object.keys(params).some(k => !['group_id', 'message'].includes(k))) throw new Error('recipient_not_allowed');
+  // Reuse strict plain-text validation; no native @all/media elements permitted.
+  return textRequest({user_id: params.group_id, message: params.message}, String(params.group_id));
+}
+
+module.exports = {id, segments, message, textRequest, groupTextRequest};

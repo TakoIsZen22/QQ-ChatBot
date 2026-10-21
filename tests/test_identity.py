@@ -88,6 +88,7 @@ class IdentityTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.identity.asset('icon','../file')
 
     def test_desktop_bridge_only_allows_identity_revision_query(self):
+        isolation=patch('src.core.desktop_api.ROOT',self.root);isolation.start();self.addCleanup(isolation.stop)
         backend=Mock();api=DesktopApi(backend)
         api.request('identity?revision=default')
         backend.request.assert_called_once_with('identity?revision=default',None)

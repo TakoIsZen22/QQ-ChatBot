@@ -1,8 +1,9 @@
 'use strict';
 const http = require('node:http');
+const {authorized} = require('./password_login');
 
 // Deliberately no arbitrary native-method proxy, profile reader, or plugin endpoint.
-function gateway(driver, config) {
+function gateway(driver, config, loginAction) {
   const clients = new Set();
   let heartbeat;
   const server = http.createServer(async (req, res) => {
@@ -18,9 +19,11 @@ function gateway(driver, config) {
       res.write(JSON.stringify({post_type: 'meta_event', meta_event_type: 'heartbeat', status: {online: driver.online && !!driver.service}}) + '\n');
       res.on('close', () => clients.delete(res)); return;
     }
-    const actions = new Set(['get_status', 'get_login_info', 'send_private_msg']);
+    const actions = new Set(['get_status', 'get_login_info', 'send_private_msg', 'send_group_msg', 'configure_groups']);
     const action = req.url?.slice(1);
-    if (req.method !== 'POST' || !actions.has(action)) {res.writeHead(404); res.end(); return;}
+    const isLogin = action === 'login_control' && typeof loginAction === 'function';
+    if (req.method !== 'POST' || (!actions.has(action) && !isLogin)) {res.writeHead(404); res.end(); return;}
+    if (isLogin && !authorized(req.headers['x-qq-login'], config.login_token)) {res.writeHead(403);res.end();return;}
     if (req.headers['content-type']?.split(';')[0] !== 'application/json') {res.writeHead(415); res.end(); return;}
     const chunks = []; let size = 0;
     try {
@@ -31,12 +34,12 @@ function gateway(driver, config) {
       }
       const params = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error('invalid_request');
-      const result = await Promise.race([driver.action(action, params), new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('native_timeout_do_not_retry')), 8000); timer.unref(); })]);
+      const result = await Promise.race([isLogin ? loginAction(params) : driver.action(action, params), new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('native_timeout_do_not_retry')), 8000); timer.unref(); })]);
       res.writeHead(200, {'Content-Type': 'application/json'});
       res.end(JSON.stringify({status: 'ok', retcode: 0, data: result}));
     } catch (err) {
       // Native errors can contain opaque account data. Return only our fixed codes.
-      const code = /^(not_logged_in|not_ready|recipient_not_allowed|text_only|invalid_text|owner_must_message_first|rate_limited|native_send_failed|native_timeout_do_not_retry|unsupported_action|invalid_request)$/.test(err?.message) ? err.message : 'native_error';
+      const code = /^(not_logged_in|not_ready|recipient_not_allowed|text_only|invalid_text|owner_must_message_first|group_must_message_first|rate_limited|native_send_failed|native_timeout_do_not_retry|unsupported_action|invalid_request|already_logged_in|login_busy|password_unsupported|login_rate_limited|challenge_unavailable|login_restart_required)$/.test(err?.message) ? err.message : 'native_error';
       res.writeHead(200, {'Content-Type': 'application/json'});
       res.end(JSON.stringify({status: 'failed', retcode: 1, message: code}));
     }

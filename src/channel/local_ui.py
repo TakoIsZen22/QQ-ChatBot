@@ -5,9 +5,17 @@ from pathlib import Path
 from aiohttp import web
 from ..core.config import ROOT,load,save_local
 from ..core.service_intent import ServiceIntent
+from ..core.local_account import LocalAccount,LoginRequired
 
 def build(h,shutdown):
     origin=f'http://127.0.0.1:{h.cfg["server"]["port"]}'
+    account=LocalAccount(h.root,h.cfg['account'])
+    def token(r):
+        auth=r.headers.get('Authorization','')
+        return auth[7:] if auth.startswith('Bearer ') else r.cookies.get(LocalAccount.COOKIE)
+    def health():
+        value=h.status()
+        return {k:value[k] for k in ('name','app_id','version','mode','groups_muted','qq_enabled','qq_connected','qq_online','last_spoke','busy','queue') if k in value}
     @web.middleware
     async def security(request,handler):
         # Host 防 DNS rebinding；浏览器跨域不能读取或写入，CLI 写入需显式头。
@@ -21,6 +29,9 @@ def build(h,shutdown):
         task=asyncio.current_task()
         if tracked:h.active_operations.add(task)
         try:
+            public=request.path in ('/api/status','/api/stop','/api/account/status','/api/account/login')
+            emergency=request.path=='/api/safety' and request.method=='POST' and await request.json()=={'mode':'paused'}
+            if request.path.startswith('/api/') and not (public or emergency):account.require(token(request))
             result=await handler(request)
         except asyncio.CancelledError:
             if not tracked:raise
@@ -29,6 +40,8 @@ def build(h,shutdown):
             raise
         except (ValueError,KeyError,TypeError) as e:
             result=web.json_response({'error':str(e)},status=400)
+        except LoginRequired as e:
+            result=web.json_response({'error':str(e),'login_required':True},status=401)
         except PermissionError as e:
             result=web.json_response({'error':str(e)},status=403)
         except Exception as e:
@@ -42,8 +55,25 @@ def build(h,shutdown):
         return result
 
     app=web.Application(middlewares=[security],client_max_size=h.cfg['server']['max_body_bytes'])
-    async def index(r): return web.FileResponse(ROOT/'src/channel/ui/index.html')
-    async def status(r): return web.json_response(h.status())
+    async def index(r):
+        page='index.html' if account.authenticated(token(r)) else 'login.html'
+        return web.FileResponse(ROOT/'src/channel/ui'/page)
+    async def status(r):
+        authorized=account.authenticated(token(r))
+        return web.json_response(dict(h.status() if authorized else health(),account_authenticated=authorized))
+    async def account_status(r):return web.json_response(dict(account.status(token(r)),enforcement=1,appearance={k:h.cfg['desktop'][k] for k in ('theme','font_scale')}))
+    async def account_login(r):
+        if r.content_length is None or r.content_length>4096:raise ValueError('账号请求过大或格式无效')
+        body=await r.json()
+        if not isinstance(body,dict) or set(body)!={'username','password'}:raise ValueError('账号参数无效')
+        session=await asyncio.to_thread(account.login,**body)
+        response=web.json_response(account.status(session))
+        response.set_cookie(LocalAccount.COOKIE,session,httponly=True,samesite='Strict',path='/',max_age=account.policy['session_seconds'])
+        return response
+    async def account_lock(r):
+        await asyncio.to_thread(account.lock,token(r))
+        response=web.json_response({'locked':True});response.del_cookie(LocalAccount.COOKIE,path='/')
+        return response
     async def guide(r):
         from ..core.guides import read_guide
         return web.json_response(read_guide(ROOT,r.match_info['name']))
@@ -66,21 +96,29 @@ def build(h,shutdown):
                     raise ValueError('群监听查询参数无效')
                 return web.json_response({'messages': h.group_monitor.rows(r.query['group_id'])})
             return web.json_response(dict(h.group_monitor.snapshot(), qq_enabled=h.cfg['qq']['enabled'],
-                                         connected=h.qq.connected, online=h.qq.online))
+                                         connected=h.qq.connected, online=h.qq.online,
+                                         groups_muted=h.safety.groups_muted, mode=h.safety.mode,
+                                         policy_synced=h.qq.group_policy_synced, chat=h.group_chat.snapshot()))
         import copy
         from ..core.config import validate
         from ..modules.group_monitor import group_id
         a = await r.json()
         if not isinstance(a, dict):raise ValueError('群监听参数无效')
         action = a.pop('action', None)
+        if action == 'sync' and not a:
+            return web.json_response({'policy_synced': await h.qq.sync_groups()})
         ident = group_id(a.get('group_id'))
+        if action == 'reset_context' and set(a) == {'group_id'}:
+            h.group_chat.reset_context(ident)
+            return web.json_response({'reset': True})
         candidate = copy.deepcopy(h.cfg)
         groups = candidate['group_monitor']['groups']
         current = next((g for g in groups if g['group_id'] == ident), None)
-        if action == 'add' and set(a) == {'group_id', 'name'}:
+        optional = {'reply_enabled', 'trigger', 'public_prompt'}
+        if action == 'add' and {'group_id', 'name'} <= set(a) and not set(a)-{'group_id','name'}-optional:
             if current:raise ValueError('该群已添加，请切换到对应窗口')
             groups.append(dict(a, enabled=True))
-        elif action == 'update' and set(a) == {'group_id', 'name', 'enabled'}:
+        elif action == 'update' and {'group_id','name','enabled'} <= set(a) and not set(a)-{'group_id','name','enabled'}-optional:
             if not current:raise ValueError('该群未添加监听')
             current.update(a)
         elif action == 'remove' and set(a) == {'group_id'}:
@@ -91,9 +129,11 @@ def build(h,shutdown):
         save_local({'group_monitor': candidate['group_monitor']})
         h.cfg['group_monitor'] = candidate['group_monitor']
         h.group_monitor.cfg = h.cfg['group_monitor']
+        h.group_chat.cancel()
         if action == 'remove':h.group_monitor.seen.pop(ident, None)
         h.log('INFO', 'group_monitor_changed', action=action, group_id=ident)
-        return web.json_response({'saved': True, 'restart_required': False})
+        synced = await h.qq.sync_groups() if h.qq.online else False
+        return web.json_response({'saved': True, 'restart_required': False, 'policy_synced': synced})
     async def chat(r): return web.json_response(h.chat_media.chat_rows())
     async def send(r):
         a=await r.json()
@@ -115,7 +155,8 @@ def build(h,shutdown):
         return web.json_response(await h.receive(dict(a,channel='local')))
     async def safety(r):
         a=await r.json();h.set_safety(**a)
-        return web.json_response(h.status())
+        # Emergency pause must also work if the account file needs offline recovery.
+        return web.json_response(health() if a=={'mode':'paused'} else h.status())
     async def stop(r):
         ServiceIntent(h.root).write(False,'api_manual_stop')
         h.set_safety('paused')
@@ -203,6 +244,9 @@ def build(h,shutdown):
         save_local(patch)
         return web.json_response({'saved':True,'restart_required':True})
     app.router.add_get('/',index)
+    app.router.add_get('/api/account/status',account_status)
+    app.router.add_post('/api/account/login',account_login)
+    app.router.add_post('/api/account/lock',account_lock)
     app.router.add_get('/api/group-monitor',group_monitor)
     app.router.add_post('/api/group-monitor',group_monitor)
     app.router.add_get('/api/guide/{name}',guide)

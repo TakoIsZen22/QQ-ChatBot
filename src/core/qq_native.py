@@ -6,22 +6,30 @@ import re
 from pathlib import Path
 
 from .config import ROOT, load
+from .native_compat import linked
 
 
-def _package(root):
-    dedicated = (root / '.runtime/qq-client').resolve()
+def _packages(root):
+    dedicated = root / '.runtime/qq-client'
+    if any(linked(p) for p in [dedicated, *dedicated.parents]):
+        raise ValueError('独立 QQ 路径不能使用链接')
+    dedicated = dedicated.resolve()
     # The installer moves the directory containing QQ.exe, stripping NSIS's Files/.
     # Accept both this layout and older extracted copies; never search system QQ.
     packages = []
     for pattern in ('versions/*/resources/app/package.json', 'resources/app/package.json',
                     'Files/versions/*/resources/app/package.json', 'Files/resources/app/package.json'):
         packages.extend(dedicated.glob(pattern))
-    if len(packages) != 1:
-        raise ValueError('实验桥接要求项目内恰好一份独立 QQ；不修改系统 QQ')
-    target = packages[0].resolve()
-    if not target.is_relative_to(dedicated) or any(p.is_symlink() for p in [dedicated, *packages[0].parents]):
-        raise ValueError('独立 QQ 路径不能使用链接')
-    return target
+    for package in packages:
+        if not package.resolve().is_relative_to(dedicated) or any(linked(p) for p in [package, *package.parents]):
+            raise ValueError('独立 QQ 路径不能使用链接')
+    return packages
+
+
+def _package(root):
+    packages = _packages(root)
+    if len(packages) != 1:raise ValueError('旧实验入口要求项目内恰好一份独立 QQ；不修改系统 QQ')
+    return packages[0].resolve()
 
 
 def diagnose(root=ROOT, cfg=None, *, probe=True):
@@ -36,14 +44,20 @@ def diagnose(root=ROOT, cfg=None, *, probe=True):
             'session':NativeHost(root).status(),
             'pending':['real_login_and_message_acceptance_on_this_installation']}
     try:
-        target=_package(root);package=json.loads(target.read_text(encoding='utf-8-sig'))
+        from .native_compat import installed_package
+        try:target=installed_package(root,cfg['qq'].get('native_version',''))
+        except (OSError,ValueError):target=_package(root)  # Metadata only; never authorizes launch.
+        package=json.loads(target.read_text(encoding='utf-8-sig'))
         report['client']['metadata_valid']=True
         version=package.get('version')
         if isinstance(version,str) and re.fullmatch(r'[A-Za-z0-9._-]{1,64}',version):report['client']['version']=version
         report['entry']['prepared']=package.get('main')=='./qq-chatbot-entry.js'
         executable(root);report['entry']['host_built']=True
-        runtime(root);report['entry']['runtime_verified']=True
-    except (OSError,ValueError,TypeError,KeyError,AttributeError):pass
+        runtime(root,cfg['qq'].get('native_version',''));report['entry']['runtime_verified']=True
+        report['client']['present']=True
+    except (OSError,ValueError,TypeError,KeyError,AttributeError) as error:
+        # Only our fixed validation messages are exposed, never raw file/JSON content.
+        report['compatibility_error']=str(error) if type(error) is ValueError else 'QQ 文件或兼容清单不完整，请检查组件'
     report['launch_available']=all((report['accounts_configured'],report['entry']['host_built'],report['entry']['runtime_verified']))
     if probe:
         connection=http.client.HTTPConnection('127.0.0.1',cfg['qq']['native_port'],timeout=1)
@@ -57,9 +71,9 @@ def diagnose(root=ROOT, cfg=None, *, probe=True):
         except (OSError,ValueError,AttributeError,http.client.HTTPException):pass
         finally:connection.close()
     if not report['client']['present']:stage='client_missing';message='请先下载独立 QQ 组件'
-    elif not report['client'].get('metadata_valid'):stage='client_layout_invalid';message='独立 QQ 目录结构不完整或存在多个版本'
+    elif not report['client'].get('metadata_valid'):stage='client_layout_invalid';message=report.get('compatibility_error','独立 QQ 目录结构不完整')
     elif not report['entry']['host_built']:stage='host_missing';message='缺少自写加载器；源码运行请先执行 tools/build-native-host.py'
-    elif not report['entry']['runtime_verified']:stage='runtime_unverified';message='固定 QQ 版本校验未通过，禁止加载；如曾修改旧入口请先 restore'
+    elif not report['entry']['runtime_verified']:stage='runtime_unverified';message=report.get('compatibility_error','QQ 兼容校验未通过，禁止加载；如曾修改旧入口请先 restore')
     elif report['session']['phase']=='ready':stage='acceptance_pending';message='机器人已登录，仍需在本次安装核对真实收发；不会自动解除暂停'
     else:stage=report['session']['phase'];message='可手动扫码接入；聊天安全模式保持不变，升级 QQ 后必须重新适配'
     report.update(stage=stage,message=message)

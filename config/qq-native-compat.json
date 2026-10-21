@@ -1,20 +1,30 @@
 {
-  "schema": "qq-chatbot.native-compat.v1",
-  "version": "9.9.33-52230",
-  "node": "24.11.1",
-  "v8": "14.4.258.16-electron.0",
-  "appid": "537379411",
-  "qua": "V1_WIN_NQ_9.9.33_52230_GW_B",
-  "sha256": {
-    "QQNT.dll": "f6f35b8517da5c38ace8d4b6abad1abed42f61c8e706d23192a22d91c7620e59",
-    "resources/app/wrapper.node": "63112ab9161e127f5f7e17998a7196e143808923fb54cbbf7b4e21426187a5f0",
-    "snapshot_blob.bin": "6894870776402e032819c7963d6525d3b283790acab8ac0bfc0b6778c88b7825",
-    "icudtl.dat": "1cf67874b5a87a8363a86fb3f81e3cbbed54d389062dab8fb52308d5cf8c8612"
-  },
+  "schema": "qq-chatbot.native-compat.v2",
+  "preferred": "9.9.33-52230",
+  "profiles": [
+    {
+      "version": "9.9.33-52230",
+      "node": "24.11.1",
+      "v8": "14.4.258.16-electron.0",
+      "appid": "537379411",
+      "qua": "V1_WIN_NQ_9.9.33_52230_GW_B",
+      "sha256": {
+        "QQNT.dll": "f6f35b8517da5c38ace8d4b6abad1abed42f61c8e706d23192a22d91c7620e59",
+        "resources/app/wrapper.node": "63112ab9161e127f5f7e17998a7196e143808923fb54cbbf7b4e21426187a5f0",
+        "snapshot_blob.bin": "6894870776402e032819c7963d6525d3b283790acab8ac0bfc0b6778c88b7825",
+        "icudtl.dat": "1cf67874b5a87a8363a86fb3f81e3cbbed54d389062dab8fb52308d5cf8c8612"
+      },
+      "adapter": "embedded-qqnt-v1"
+    }
+  ],
   "limits": {
     "start_timeout_seconds": 20,
     "stop_timeout_seconds": 5,
     "control_poll_ms": 250,
-    "qr_max_age_seconds": 120
+    "qr_max_age_seconds": 120,
+    "password_timeout_ms": 120000,
+    "login_window_ms": 600000,
+    "login_min_interval_ms": 5000,
+    "login_max_attempts": 5
   }
 }

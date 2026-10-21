@@ -3,8 +3,10 @@ import json
 import re
 import zipfile
 from pathlib import Path
+from src.version import VERSION
+from src.core.edition import release_versions
 
-VERSIONS = ('1.00.01', '1.00.02')
+VERSIONS = release_versions(VERSION)
 
 
 def prepare_edition(archive, destination, version):
@@ -31,7 +33,7 @@ def prepare_edition(archive, destination, version):
             target.parent.mkdir(parents=True,exist_ok=True)
             target.write_bytes(bundle.read(item))
     (destination/'src/version.py').write_text(f"VERSION = '{version}'\n",encoding='utf-8')
-    api_only = version == '1.00.01'
+    api_only = version == VERSIONS[0]
     for name in ('config/settings.json','config/local.example.json'):
         path=destination/name
         cfg=json.loads(path.read_text(encoding='utf-8-sig'))

@@ -4,6 +4,7 @@ import json
 import re
 import zipfile
 from pathlib import Path
+from src.core.edition import release_versions
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {'README.md','HANDOFF.md','AGENTS.md','LICENSE','NOTICE.md','CHANGELOG.md',
@@ -27,7 +28,8 @@ def version(root):
 
 def candidates(root):
     result = []
-    api_only = version(root)=='1.00.01'
+    current = version(root)
+    api_only = current==release_versions(current)[0]
     extras={'config/qq-native-compat.json','config/runtime-downloads.json','.github/workflows/windows-release.yml','tools/portable-launcher.cs'}
     paths = {root/name for name in ROOT_FILES | PUBLIC_ASSETS | extras | {'config/settings.json','config/local.example.json','user_plugins/impression_example.py'}}
     paths.update(root.glob('requirements*.txt'))
@@ -82,7 +84,7 @@ def build_release(root=ROOT, output=None):
         raise ValueError('公开包不得预设监听群号或群备注')
     if cfg['role']['card']!='src/persona/role.md':
         raise ValueError('公开默认配置必须使用通用人设')
-    api_only=release_version=='1.00.01'
+    api_only=release_version==release_versions(release_version)[0]
     expected=('openai_compatible','', 'HARNESS_API_KEY') if api_only else ('magpie','http://127.0.0.1:3425/v1','MAGPIE_API_KEY')
     if tuple(cfg['model'][k] for k in ('provider','base_url','key_env'))!=expected:
         raise ValueError('公开包不能预填私人自定义 API；默认接入配置必须与版本一致')

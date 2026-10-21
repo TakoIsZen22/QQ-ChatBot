@@ -25,7 +25,7 @@ class EndpointTests(unittest.TestCase):
     def setUp(self):self.cfg=load(Path(tempfile.gettempdir())/'absent-api-local.json')
 
     def test_custom_https_and_loopback_support_without_changing_default_provider(self):
-        # 默认接入方式随发行版不同：1.00.01 是自有 API，1.00.02 额外支持 Magpie。
+        # 默认接入方式随发行版不同：1.10.01 是自有 API，1.10.02 额外支持 Magpie。
         self.assertEqual(self.cfg['model']['provider'],'openai_compatible' if 'magpie' not in capabilities()['providers'] else 'magpie')
         self.cfg['model'].update(provider='openai_compatible',base_url='https://api.example/v1/')
         validate(self.cfg);self.assertEqual(endpoint(self.cfg['model']),'https://api.example/v1')
@@ -43,10 +43,12 @@ class EndpointTests(unittest.TestCase):
         if 'magpie' in capabilities()['providers']:
             with self.assertRaisesRegex(ValueError,'自定义'):validate(self.cfg)
         else:
-            # 自有 API 版在更早一步就拒绝 Magpie，提示应指向 1.00.02。
-            with self.assertRaisesRegex(ValueError,'1\.00\.02'):validate(self.cfg)
+            # 自有 API 版在更早一步就拒绝 Magpie，提示应指向 1.10.02。
+            with self.assertRaisesRegex(ValueError,r'1\.10\.02'):validate(self.cfg)
 
     def test_bridge_probe_uses_dedicated_timeout_and_cannot_receive_secret_fields(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        isolation=patch('src.core.desktop_api.ROOT',Path(private.name));isolation.start();self.addCleanup(isolation.stop)
         backend=Mock();api=DesktopApi(backend)
         api.request('model-connection',{'provider':'magpie'})
         backend.request.assert_called_once_with('model-connection',{'provider':'magpie'},timeout=load()['model']['models_timeout_seconds']+5)

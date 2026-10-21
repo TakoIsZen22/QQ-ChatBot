@@ -1,6 +1,6 @@
 # QQ ChatBot 应用图标
 
-1.00.01 与 1.00.02 的默认程序图标均使用 2026-10-20 使用者提供的图片（蓝发角色与「穷光蛋」气泡），保留原图完整内容。经 FlyingMouse Format 转换为 PNG 和 Windows 多尺寸 ICO，未重新生成图案。
+1.10.01 与 1.10.02 的默认程序图标均使用 2026-10-20 使用者提供的图片（蓝发角色与「穷光蛋」气泡），保留原图完整内容。经 FlyingMouse Format 转换为 PNG 和 Windows 多尺寸 ICO，未重新生成图案。
 
 - `qq-chatbot-fish-chat-v1.png`：设计图稿原始 PNG，1254×1254。
 - `qq-chatbot-fish-chat-v1.ico`：Windows 多尺寸 ICO，包含 16/24/32/48/64/128/256。
